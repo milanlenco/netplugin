@@ -190,7 +190,7 @@ func main() {
 	// initialize the config
 	pluginConfig := plugin.Config{
 		Drivers: plugin.Drivers{
-			Network: "ovs",
+			Network: "vpp",
 			State:   stateStore,
 		},
 		Instance: core.InstanceInfo{

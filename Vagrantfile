@@ -111,6 +111,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
     config.vm.provider 'virtualbox' do |v|
         v.linked_clone = true if Vagrant::VERSION =~ /^1.8/
+        v.memory = 5112
+        v.cpus = 2
     end
 
     num_nodes = 3

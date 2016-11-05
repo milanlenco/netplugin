@@ -26,7 +26,7 @@ var networkDriverRegistry = map[string]driverConfigTypes{
 		DriverType: reflect.TypeOf(drivers.FakeNetEpDriver{}),
 		ConfigType: reflect.TypeOf(drivers.FakeNetEpDriverConfig{}),
 	},
-	"vppDriver": {
+	VppNameStr: {
 		DriverType: reflect.TypeOf(drivers.VppDriver{}),
 		ConfigType: reflect.TypeOf(drivers.VppDriver{}),
 	},

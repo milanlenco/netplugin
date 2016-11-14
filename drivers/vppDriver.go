@@ -2,8 +2,14 @@ package drivers
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
+	"github.com/contiv/netplugin/netmaster/mastercfg"
 	govpp "github.com/fdio-stack/go-vpp/srv"
+)
+
+const (
+	vppRPCPort = 9002
 )
 
 // // VppDriverConfig represents the configuration of the vppdriver
@@ -36,7 +42,17 @@ func (d *VppDriver) Deinit() {
 
 // CreateNetwork creates a network for a given ID.
 func (d *VppDriver) CreateNetwork(id string) error {
-	return core.Errorf("Not implemented")
+	cfgNw := mastercfg.CfgNetworkState{}
+	cfgNw.StateDriver = d.oper.StateDriver
+	err := cfgNw.Read(id)
+	if err != nil {
+		log.Errorf("Failed to read net %s \n", cfgNw.ID)
+		return err
+	}
+	log.Infof("create net %+v \n", cfgNw)
+
+	//return sw.CreateNetwork(uint16(cfgNw.PktTag), uint32(cfgNw.ExtPktTag), cfgNw.Gateway, cfgNw.Tenant)
+	return nil
 }
 
 // DeleteNetwork deletes a network provided by the ID.
@@ -51,6 +67,7 @@ func (d *VppDriver) FetchNetwork(id string) (core.State, error) {
 
 // CreateEndpoint creates an endpoint for a given ID.
 func (d *VppDriver) CreateEndpoint(id string) error {
+
 	return core.Errorf("Not implemented")
 }
 
@@ -91,7 +108,11 @@ func (d *VppDriver) DeletePeerHost(node core.ServiceInfo) error {
 
 // AddMaster adds a master node.
 func (d *VppDriver) AddMaster(node core.ServiceInfo) error {
-	return core.Errorf("Not implemented")
+	err := rpcHub.Client(vppRPCPort).Call("vppMaster.RegisterNode", &myInfo, &resp)
+	if err != nil {
+		log.Errorf("Failed to register with the master %+v. Err: %v", master, err)
+		return err
+	}
 }
 
 // DeleteMaster removes a master node

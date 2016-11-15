@@ -219,6 +219,10 @@ var Commands = []cli.Command{
 						Name:  "gatewayv6, g6",
 						Usage: "IPv6 Gateway",
 					},
+					cli.StringFlag{
+						Name:  "bridgeDomainID, bd",
+						Usage: "Bridge Domain ID",
+					},
 				},
 				Action: createNetwork,
 			},

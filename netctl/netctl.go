@@ -414,6 +414,8 @@ func createNetwork(ctx *cli.Context) {
 	subnetv6 := ctx.String("subnetv6")
 	gatewayv6 := ctx.String("gatewayv6")
 
+	bridgeDomainID := ctx.String("bridgedomainid")
+
 	if subnet == "" {
 		errExit(ctx, exitHelp, "Subnet is required", true)
 	}
@@ -427,6 +429,9 @@ func createNetwork(ctx *cli.Context) {
 			errExit(ctx, exitHelp, "Invalid IPv6 gateway ", true)
 		}
 	}
+	if bridgeDomainID != "" {
+		errExit(ctx, exitHelp, "Bridge Domain Id is required", true)
+	}
 
 	tenant := ctx.String("tenant")
 	network := ctx.Args()[0]
@@ -435,15 +440,16 @@ func createNetwork(ctx *cli.Context) {
 	nwType := ctx.String("nw-type")
 
 	errCheck(ctx, getClient(ctx).NetworkPost(&contivClient.Network{
-		TenantName:  tenant,
-		NetworkName: network,
-		Encap:       encap,
-		Subnet:      subnet,
-		Gateway:     gateway,
-		Ipv6Subnet:  subnetv6,
-		Ipv6Gateway: gatewayv6,
-		PktTag:      pktTag,
-		NwType:      nwType,
+		TenantName:   tenant,
+		NetworkName:  network,
+		Encap:        encap,
+		Subnet:       subnet,
+		Gateway:      gateway,
+		Ipv6Subnet:   subnetv6,
+		Ipv6Gateway:  gatewayv6,
+		PktTag:       pktTag,
+		NwType:       nwType,
+		BridgeDomain: bridgeDomainID,
 	}))
 
 	fmt.Printf("Creating network %s:%s\n", tenant, network)

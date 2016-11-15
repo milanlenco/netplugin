@@ -8,9 +8,9 @@ import (
 	govpp "github.com/fdio-stack/go-vpp/srv"
 )
 
-const (
-	vppRPCPort = 9002
-)
+// const (
+// 	vppRPCPort = 9002
+// )
 
 // // VppDriverConfig represents the configuration of the vppdriver
 // type VppDriverConfig struct {
@@ -42,14 +42,22 @@ func (d *VppDriver) Deinit() {
 
 // CreateNetwork creates a network for a given ID.
 func (d *VppDriver) CreateNetwork(id string) error {
+	fmt.Println(id)
 	cfgNw := mastercfg.CfgNetworkState{}
 	cfgNw.StateDriver = d.oper.StateDriver
-	err := cfgNw.Read(id)
-	if err != nil {
-		log.Errorf("Failed to read net %s \n", cfgNw.ID)
-		return err
-	}
 	log.Infof("create net %+v \n", cfgNw)
+	bdID := govpp.VppBridgeDomain(id)
+	if bdID == 0 {
+		log.Infof("Could not create bridge domain")
+	} else {
+		fmt.Println("Bridge domain successfully created with id:")
+		fmt.Println(bdID)
+	}
+
+	// if err != nil {
+	// 	log.Errorf("Failed to read net %s \n", cfgNw.ID)
+	// 	return err
+	// }
 
 	//return sw.CreateNetwork(uint16(cfgNw.PktTag), uint32(cfgNw.ExtPktTag), cfgNw.Gateway, cfgNw.Tenant)
 	return nil
@@ -108,11 +116,7 @@ func (d *VppDriver) DeletePeerHost(node core.ServiceInfo) error {
 
 // AddMaster adds a master node.
 func (d *VppDriver) AddMaster(node core.ServiceInfo) error {
-	err := rpcHub.Client(vppRPCPort).Call("vppMaster.RegisterNode", &myInfo, &resp)
-	if err != nil {
-		log.Errorf("Failed to register with the master %+v. Err: %v", master, err)
-		return err
-	}
+	return core.Errorf("Not implemented")
 }
 
 // DeleteMaster removes a master node

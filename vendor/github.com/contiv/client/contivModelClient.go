@@ -330,15 +330,16 @@ type Network struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
 
-	Encap       string `json:"encap,omitempty"`       // Encapsulation
-	Gateway     string `json:"gateway,omitempty"`     // Gateway
-	Ipv6Gateway string `json:"ipv6Gateway,omitempty"` // IPv6Gateway
-	Ipv6Subnet  string `json:"ipv6Subnet,omitempty"`  // IPv6Subnet
-	NetworkName string `json:"networkName,omitempty"` // Network name
-	NwType      string `json:"nwType,omitempty"`      // Network Type
-	PktTag      int    `json:"pktTag,omitempty"`      // Vlan/Vxlan Tag
-	Subnet      string `json:"subnet,omitempty"`      // Subnet
-	TenantName  string `json:"tenantName,omitempty"`  // Tenant Name
+	Encap        string `json:"encap,omitempty"`        // Encapsulation
+	Gateway      string `json:"gateway,omitempty"`      // Gateway
+	Ipv6Gateway  string `json:"ipv6Gateway,omitempty"`  // IPv6Gateway
+	Ipv6Subnet   string `json:"ipv6Subnet,omitempty"`   // IPv6Subnet
+	NetworkName  string `json:"networkName,omitempty"`  // Network name
+	NwType       string `json:"nwType,omitempty"`       // Network Type
+	PktTag       int    `json:"pktTag,omitempty"`       // Vlan/Vxlan Tag
+	Subnet       string `json:"subnet,omitempty"`       // Subnet
+	TenantName   string `json:"tenantName,omitempty"`   // Tenant Name
+	BridgeDomain string `json:"bridgeDomain,omitempty"` // Bridge Domain ID
 
 	// add link-sets and links
 	LinkSets NetworkLinkSets `json:"link-sets,omitempty"`

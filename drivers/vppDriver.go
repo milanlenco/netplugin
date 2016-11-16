@@ -50,16 +50,9 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	if bdID == 0 {
 		log.Infof("Could not create bridge domain")
 	} else {
-		fmt.Println("Bridge domain successfully created with id:")
+		fmt.Println("Bridge domain successfully created with id %d", bdID)
 		fmt.Println(bdID)
 	}
-
-	// if err != nil {
-	// 	log.Errorf("Failed to read net %s \n", cfgNw.ID)
-	// 	return err
-	// }
-
-	//return sw.CreateNetwork(uint16(cfgNw.PktTag), uint32(cfgNw.ExtPktTag), cfgNw.Gateway, cfgNw.Tenant)
 	return nil
 }
 

@@ -5,12 +5,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
+	netutils "github.com/contiv/netplugin/utils/netutils"
 	govpp "github.com/fdio-stack/go-vpp/srv"
+	//"github.com/go-shortid"
+	// "github.com/vishvananda/netlink"
 )
 
-// const (
-// 	vppRPCPort = 9002
-// )
+var uid = 1
 
 // // VppDriverConfig represents the configuration of the vppdriver
 // type VppDriverConfig struct {
@@ -40,6 +41,23 @@ func (d *VppDriver) Deinit() {
 	govpp.VppDisconnect()
 }
 
+func (d *VppDriver) getIntfName() (string, error) {
+	// // Create a random interface name
+	// if sid, err := shortid.New(1, shortid.DefaultABC, 2342); err != nil {
+	// 	log.Infof("Could not generate interface name")
+	// }
+	uid++
+
+	intfName := fmt.Sprintf("veth_%d", uid)
+	return intfName, nil
+}
+
+func (d *VppDriver) getVppIntName(intfName string) (string, error) {
+	// Same interface format for vpp veth pair
+	vppIntfName := intfName[5:]
+	return vppIntfName, nil
+}
+
 // CreateNetwork creates a network for a given ID.
 func (d *VppDriver) CreateNetwork(id string) error {
 	fmt.Println(id)
@@ -50,7 +68,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	if bdID == 0 {
 		log.Infof("Could not create bridge domain")
 	} else {
-		fmt.Println("Bridge domain successfully created with id %d", bdID)
+		fmt.Println("Bridge domain successfully created with id:")
 		fmt.Println(bdID)
 	}
 	return nil
@@ -68,8 +86,87 @@ func (d *VppDriver) FetchNetwork(id string) (core.State, error) {
 
 // CreateEndpoint creates an endpoint for a given ID.
 func (d *VppDriver) CreateEndpoint(id string) error {
+	log.Infof("Create endpoint with id: %s", id)
+	var (
+		err      error
+		intfName string
+	)
 
-	return core.Errorf("Not implemented")
+	cfgEp := &mastercfg.CfgEndpointState{}
+	cfgEp.StateDriver = d.oper.StateDriver
+	// brecode - read endpoint
+	cfgNw := mastercfg.CfgNetworkState{}
+	cfgNw.StateDriver = d.oper.StateDriver
+	//brecode - read mastercgf
+
+	cfgEpGroup := &mastercfg.EndpointGroupState{}
+	cfgEpGroup.StateDriver = d.oper.StateDriver
+
+	// Get the interface name to use
+	intfName, err = d.getIntfName()
+	if err != nil {
+		return err
+	}
+
+	// Ask VPP to create the Port. Part is to create a veth pair.
+	err = d.CreateVppIntf(intfName)
+	if err != nil {
+		log.Errorf("Error creating port %s. Err: %v", intfName, err)
+		return err
+	}
+
+	// Handle the Operation State of Endpoints
+	// operEp := &VppOperEndpointState{}
+	// operEp.StateDriver = d.oper.StateDriver
+	// // Save the oper state
+	// operEp = &VppOperEndpointState{
+	// 	NetID:       cfgEp.NetID,
+	// 	AttachUUID:  cfgEp.AttachUUID,
+	// 	ContName:    cfgEp.ContName,
+	// 	ServiceName: cfgEp.ServiceName,
+	// 	IPAddress:   cfgEp.IPAddress,
+	// 	MacAddress:  cfgEp.MacAddress,
+	// 	IntfName:    cfgEp.IntfName,
+	// 	PortName:    intfName,
+	// 	HomingHost:  cfgEp.HomingHost,
+	// 	VtepIP:      cfgEp.VtepIP}
+	// operEp.StateDriver = d.oper.StateDriver
+	// operEp.ID = id
+	// err = operEp.Write()
+	// if err != nil {
+	// 	return err
+	// }
+	// defer func() {
+	// 	if err != nil {
+	// 		operEp.Clear()
+	// 	}
+	// }()
+
+	return nil
+
+}
+
+// CreatePort creates an interface in VPP for a given veth pair name.
+func (d *VppDriver) CreateVppIntf(intfName string) error {
+
+	// Get VPP port name
+	vppIntfName, err := d.getVppIntName(intfName)
+	if err != nil {
+		log.Errorf("Error generating Vpp veth pair name. Err: %v", err)
+		return err
+	}
+
+	// Create a Veth pair
+	err := netutils.CreateVethPairVpp(intfName, vppIntfName)
+	if err != nil {
+		log.Errorf("Error creating veth pairs. Err: %v", err)
+		return err
+	}
+
+	// Add VPP interface
+	govpp.VppAddInterface(vppIntfName)
+
+	return nil
 }
 
 //UpdateEndpointGroup updates the endpoint with the new endpointgroup specification for the given ID.
@@ -144,7 +241,7 @@ func (d *VppDriver) DeleteServiceLB(servicename string, spec *core.ServiceSpec) 
 
 //SvcProviderUpdate hhhh
 func (d *VppDriver) SvcProviderUpdate(servicename string, providers []string) {
-	fmt.Println("Called Vpp: hhh")
+	fmt.Println("Not implemented")
 }
 
 // GetEndpointStats returns all endpoint stats

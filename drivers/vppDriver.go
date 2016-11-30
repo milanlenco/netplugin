@@ -7,8 +7,10 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	netutils "github.com/contiv/netplugin/utils/netutils"
 	govpp "github.com/fdio-stack/go-vpp/srv"
-	// "github.com/ventu-io/go-shortid"
+	"github.com/ventu-io/go-shortid"
 )
+
+type operVpp int
 
 // VppDriverOperState carries operational state of the VppDriver.
 type VppDriverOperState struct {
@@ -18,7 +20,7 @@ type VppDriverOperState struct {
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	oper VppDriverOperState // Oper state of the driver
+	operVpp VppDriverOperState // Oper state of the driver
 }
 
 // Init initializes the VPP driver
@@ -37,7 +39,7 @@ func (d *VppDriver) Deinit() {
 func (d *VppDriver) CreateNetwork(id string) error {
 	fmt.Println(id)
 	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.oper.StateDriver
+	cfgNw.StateDriver = d.operVpp.StateDriver
 	log.Infof("create net %+v \n", cfgNw)
 	bdID := govpp.VppBridgeDomain(id)
 	if bdID == 0 {
@@ -68,25 +70,25 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	)
 
 	cfgEp := &mastercfg.CfgEndpointState{}
-	cfgEp.StateDriver = d.oper.StateDriver
-	err = cfgEp.Read(id)
-	if err != nil {
-		return err
-	}
+	cfgEp.StateDriver = d.operVpp.StateDriver
+	// err = cfgEp.Read(id)
+	// if err != nil {
+	// 	return err
+	// }
 
 	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.oper.StateDriver
-	err = cfgNw.Read(cfgEp.NetID)
-	if err != nil {
-		log.Errorf("Unable to get network %s. Err: %v", cfgEp.NetID, err)
-		return err
-	}
+	cfgNw.StateDriver = d.operVpp.StateDriver
+	// err = cfgNw.Read(cfgEp.NetID)
+	// if err != nil {
+	// 	log.Errorf("Unable to get network %s. Err: %v", cfgEp.NetID, err)
+	// 	return err
+	// }
 
 	cfgEpGroup := &mastercfg.EndpointGroupState{}
-	cfgEpGroup.StateDriver = d.oper.StateDriver
+	cfgEpGroup.StateDriver = d.operVpp.StateDriver
 
 	operEp := &VppOperEndpointState{}
-	operEp.StateDriver = d.oper.StateDriver
+	operEp.StateDriver = d.operVpp.StateDriver
 
 	intfName, err = d.getIntfName()
 	if err != nil {
@@ -112,18 +114,18 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		IntfName:    cfgEp.IntfName,
 		HomingHost:  cfgEp.HomingHost}
 
-	operEp.StateDriver = d.oper.StateDriver
+	operEp.StateDriver = d.operVpp.StateDriver
 	operEp.ID = id
-	err = operEp.Write()
-	if err != nil {
-		return err
-	}
+	// err = operEp.Write()
+	// if err != nil {
+	// 	return err
+	// }
 
-	defer func() {
-		if err != nil {
-			operEp.Clear()
-		}
-	}()
+	// defer func() {
+	// 	if err != nil {
+	// 		operEp.Clear()
+	// 	}
+	// }()
 
 	return nil
 }
@@ -243,22 +245,20 @@ func (d *VppDriver) InspectBgp() ([]byte, error) {
 }
 
 func (d *VppDriver) getIntfName() (string, error) {
-	vethPrefix := "veth_"
-	// Create a random interface name
-	// sid, err := shortid.New(1, shortid.DefaultABC, 2342)
-	// if err != nil {
-	// 	log.Errorf("Could not generate interface name")
-	// 	return "", err
-	// }
+	//Create a random interface name
+	vethPrefix := "veth"
 
-	// intfName, _ := sid.Generate()
+	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
+	if err != nil {
+		log.Errorf("Could not generate interface name")
+		return "", err
+	}
+	intfName, _ := sid.Generate()
+	if err != nil {
+		log.Errorf("Could not generate interface name")
+		return "", err
+	}
 
-	// if err != nil {
-	// 	log.Errorf("Could not generate interface name")
-	// 	return "", err
-	// }
-
-	intfName := "1223"
 	intfName = fmt.Sprint(vethPrefix + intfName)
 	return intfName, nil
 
@@ -266,6 +266,6 @@ func (d *VppDriver) getIntfName() (string, error) {
 
 func (d *VppDriver) getVppIntName(intfName string) (string, error) {
 	// Same interface format for vpp veth pair
-	vppIntfName := intfName[5:]
+	vppIntfName := intfName[4:]
 	return vppIntfName, nil
 }

@@ -48,23 +48,25 @@ func (s *VppOperEndpointState) Matches(c *mastercfg.CfgEndpointState) bool {
 
 // Write the state.
 func (s *VppOperEndpointState) Write() error {
-	key := fmt.Sprintf(endpointOperPath, s.ID)
+	key := fmt.Sprintf(vppEndpointOperPath, s.ID)
+	fmt.Println("Yo this is the key:")
+	fmt.Println(key)
 	return s.StateDriver.WriteState(key, s, json.Marshal)
 }
 
 // Read the state for a given identifier.
 func (s *VppOperEndpointState) Read(id string) error {
-	key := fmt.Sprintf(endpointOperPath, id)
+	key := fmt.Sprintf(vppEndpointOperPath, id)
 	return s.StateDriver.ReadState(key, s, json.Unmarshal)
 }
 
 // ReadAll reads all state into separate objects.
 func (s *VppOperEndpointState) ReadAll() ([]core.State, error) {
-	return s.StateDriver.ReadAllState(endpointOperPathPrefix, s, json.Unmarshal)
+	return s.StateDriver.ReadAllState(vppEndpointOperPathPrefix, s, json.Unmarshal)
 }
 
 // Clear removes the state.
 func (s *VppOperEndpointState) Clear() error {
-	key := fmt.Sprintf(endpointOperPath, s.ID)
+	key := fmt.Sprintf(vppEndpointOperPath, s.ID)
 	return s.StateDriver.ClearState(key)
 }

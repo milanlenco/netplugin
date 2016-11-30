@@ -7,11 +7,8 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	netutils "github.com/contiv/netplugin/utils/netutils"
 	govpp "github.com/fdio-stack/go-vpp/srv"
-	"github.com/ventu-io/go-shortid"
-	//"strconv"
+	// "github.com/ventu-io/go-shortid"
 )
-
-var index = 1
 
 // VppDriverOperState carries operational state of the VppDriver.
 type VppDriverOperState struct {
@@ -72,9 +69,18 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 
 	cfgEp := &mastercfg.CfgEndpointState{}
 	cfgEp.StateDriver = d.oper.StateDriver
+	err = cfgEp.Read(id)
+	if err != nil {
+		return err
+	}
 
 	cfgNw := mastercfg.CfgNetworkState{}
 	cfgNw.StateDriver = d.oper.StateDriver
+	err = cfgNw.Read(cfgEp.NetID)
+	if err != nil {
+		log.Errorf("Unable to get network %s. Err: %v", cfgEp.NetID, err)
+		return err
+	}
 
 	cfgEpGroup := &mastercfg.EndpointGroupState{}
 	cfgEpGroup.StateDriver = d.oper.StateDriver
@@ -108,9 +114,18 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 
 	operEp.StateDriver = d.oper.StateDriver
 	operEp.ID = id
+	err = operEp.Write()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			operEp.Clear()
+		}
+	}()
 
 	return nil
-
 }
 
 // CreateVppIntf creates an interface in VPP for a given veth pair name.
@@ -230,21 +245,23 @@ func (d *VppDriver) InspectBgp() ([]byte, error) {
 func (d *VppDriver) getIntfName() (string, error) {
 	vethPrefix := "veth_"
 	// Create a random interface name
-	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
-	if err != nil {
-		log.Errorf("Could not generate interface name")
-		return "", err
-	}
+	// sid, err := shortid.New(1, shortid.DefaultABC, 2342)
+	// if err != nil {
+	// 	log.Errorf("Could not generate interface name")
+	// 	return "", err
+	// }
 
-	intfName, _ := sid.Generate()
-	if err != nil {
-		log.Errorf("Could not generate interface name")
-		return "", err
-	}
+	// intfName, _ := sid.Generate()
+
+	// if err != nil {
+	// 	log.Errorf("Could not generate interface name")
+	// 	return "", err
+	// }
+
+	intfName := "1223"
 	intfName = fmt.Sprint(vethPrefix + intfName)
 	return intfName, nil
-	// intfName := fmt.Sprint(vethPrefix + strconv.Itoa(index))
-	// index++
+
 }
 
 func (d *VppDriver) getVppIntName(intfName string) (string, error) {

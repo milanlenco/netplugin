@@ -1,6 +1,7 @@
 package drivers
 
 import (
+	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
@@ -23,6 +24,29 @@ type VppDriver struct {
 	operVpp VppDriverOperState // Oper state of the driver
 }
 
+// Write the state
+func (s *VppDriverOperState) Write() error {
+	key := fmt.Sprintf(vppOperPath, s.ID)
+	return s.StateDriver.WriteState(key, s, json.Marshal)
+}
+
+// Read the state given an ID.
+func (s *VppDriverOperState) Read(id string) error {
+	key := fmt.Sprintf(vppOperPath, id)
+	return s.StateDriver.ReadState(key, s, json.Unmarshal)
+}
+
+// ReadAll reads all the state
+func (s *VppDriverOperState) ReadAll() ([]core.State, error) {
+	return s.StateDriver.ReadAllState(vppOperPathPrefix, s, json.Unmarshal)
+}
+
+// Clear removes the state.
+func (s *VppDriverOperState) Clear() error {
+	key := fmt.Sprintf(vppOperPath, s.ID)
+	return s.StateDriver.ClearState(key)
+}
+
 // Init initializes the VPP driver
 func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	fmt.Println("Called Vpp: Init")
@@ -37,10 +61,15 @@ func (d *VppDriver) Deinit() {
 
 // CreateNetwork creates a network for a given ID.
 func (d *VppDriver) CreateNetwork(id string) error {
-	fmt.Println(id)
 	cfgNw := mastercfg.CfgNetworkState{}
 	cfgNw.StateDriver = d.operVpp.StateDriver
-	log.Infof("create net %+v \n", cfgNw)
+	err := cfgNw.Read(id)
+	if err != nil {
+		log.Errorf("Failed to read net %s \n", cfgNw.ID)
+		return err
+	}
+
+	log.Infof("Create net %+v \n", cfgNw)
 	bdID := govpp.VppBridgeDomain(id)
 	if bdID == 0 {
 		log.Infof("Could not create bridge domain")
@@ -71,18 +100,19 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 
 	cfgEp := &mastercfg.CfgEndpointState{}
 	cfgEp.StateDriver = d.operVpp.StateDriver
-	// err = cfgEp.Read(id)
-	// if err != nil {
-	// 	return err
-	// }
+	err = cfgEp.Read(id)
+	if err != nil {
+		log.Errorf("Unable to get EpState %s. Err: %v", cfgEp.NetID, err)
+		return err
+	}
 
 	cfgNw := mastercfg.CfgNetworkState{}
 	cfgNw.StateDriver = d.operVpp.StateDriver
-	// err = cfgNw.Read(cfgEp.NetID)
-	// if err != nil {
-	// 	log.Errorf("Unable to get network %s. Err: %v", cfgEp.NetID, err)
-	// 	return err
-	// }
+	err = cfgNw.Read(cfgEp.NetID)
+	if err != nil {
+		log.Errorf("Unable to get network %s. Err: %v", cfgNw.NetworkName, err)
+		return err
+	}
 
 	cfgEpGroup := &mastercfg.EndpointGroupState{}
 	cfgEpGroup.StateDriver = d.operVpp.StateDriver
@@ -116,16 +146,16 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 
 	operEp.StateDriver = d.operVpp.StateDriver
 	operEp.ID = id
-	// err = operEp.Write()
-	// if err != nil {
-	// 	return err
-	// }
+	err = operEp.Write()
+	if err != nil {
+		return err
+	}
 
-	// defer func() {
-	// 	if err != nil {
-	// 		operEp.Clear()
-	// 	}
-	// }()
+	defer func() {
+		if err != nil {
+			operEp.Clear()
+		}
+	}()
 
 	return nil
 }

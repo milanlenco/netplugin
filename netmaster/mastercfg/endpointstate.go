@@ -51,6 +51,8 @@ func (s *CfgEndpointState) Write() error {
 // Read the state for a given identifier.
 func (s *CfgEndpointState) Read(id string) error {
 	key := fmt.Sprintf(endpointConfigPath, id)
+	fmt.Println("This is the endpointConfigPath:")
+	fmt.Println(key)
 	return s.StateDriver.ReadState(key, s, json.Unmarshal)
 }
 

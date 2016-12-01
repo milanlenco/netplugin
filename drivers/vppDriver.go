@@ -8,10 +8,10 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	netutils "github.com/contiv/netplugin/utils/netutils"
 	govpp "github.com/fdio-stack/go-vpp/srv"
-	"github.com/ventu-io/go-shortid"
+	//"github.com/ventu-io/go-shortid"
 )
 
-type operVpp int
+type vppOper int
 
 // VppDriverOperState carries operational state of the VppDriver.
 type VppDriverOperState struct {
@@ -21,7 +21,7 @@ type VppDriverOperState struct {
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	operVpp VppDriverOperState // Oper state of the driver
+	vppOper VppDriverOperState // Oper state of the driver
 }
 
 // Write the state
@@ -49,7 +49,26 @@ func (s *VppDriverOperState) Clear() error {
 
 // Init initializes the VPP driver
 func (d *VppDriver) Init(info *core.InstanceInfo) error {
-	fmt.Println("Called Vpp: Init")
+	if info == nil || info.StateDriver == nil {
+		return core.Errorf("Invalid arguments. instance-info: %+v", info)
+	}
+	d.vppOper.StateDriver = info.StateDriver
+	err := d.vppOper.Read(info.HostLabel)
+	if core.ErrIfKeyExists(err) != nil {
+		log.Errorf("Failed to read driver oper state for key %q. Error: %s",
+			info.HostLabel, err)
+		return err
+	} else if err != nil {
+		// create the oper state as it is first time start up
+		d.vppOper.ID = info.HostLabel
+
+		// write the oper
+		err = d.vppOper.Write()
+		if err != nil {
+			return err
+		}
+	}
+	log.Infof("Initializing vpp driver")
 	govpp.VppConnect("vpp_contiv_client")
 	return nil
 }
@@ -62,7 +81,7 @@ func (d *VppDriver) Deinit() {
 // CreateNetwork creates a network for a given ID.
 func (d *VppDriver) CreateNetwork(id string) error {
 	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.operVpp.StateDriver
+	cfgNw.StateDriver = d.vppOper.StateDriver
 	err := cfgNw.Read(id)
 	if err != nil {
 		log.Errorf("Failed to read net %s \n", cfgNw.ID)
@@ -99,15 +118,16 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	)
 
 	cfgEp := &mastercfg.CfgEndpointState{}
-	cfgEp.StateDriver = d.operVpp.StateDriver
+	cfgEp.StateDriver = d.vppOper.StateDriver
 	err = cfgEp.Read(id)
 	if err != nil {
 		log.Errorf("Unable to get EpState %s. Err: %v", cfgEp.NetID, err)
 		return err
 	}
+	fmt.Println(cfgEp)
 
 	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.operVpp.StateDriver
+	cfgNw.StateDriver = d.vppOper.StateDriver
 	err = cfgNw.Read(cfgEp.NetID)
 	if err != nil {
 		log.Errorf("Unable to get network %s. Err: %v", cfgNw.NetworkName, err)
@@ -115,19 +135,18 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	}
 
 	cfgEpGroup := &mastercfg.EndpointGroupState{}
-	cfgEpGroup.StateDriver = d.operVpp.StateDriver
+	cfgEpGroup.StateDriver = d.vppOper.StateDriver
 
 	operEp := &VppOperEndpointState{}
-	operEp.StateDriver = d.operVpp.StateDriver
+	operEp.StateDriver = d.vppOper.StateDriver
 
 	intfName, err = d.getIntfName()
 	if err != nil {
 		log.Errorf("Error generating intfName %s. Err: %v", intfName, err)
 		return err
 	}
-	log.Debug("Interface vethpair name: %s", intfName)
 
-	// Ask VPP to create the Port. Part is to create a veth pair.
+	// Ask VPP to create the interface. Part is to create a veth pair.
 	err = d.CreateVppIntf(intfName)
 	if err != nil {
 		log.Errorf("Error creating vpp interface %s. Err: %v", intfName, err)
@@ -141,10 +160,10 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		ServiceName: cfgEp.ServiceName,
 		IPAddress:   cfgEp.IPAddress,
 		MacAddress:  cfgEp.MacAddress,
-		IntfName:    cfgEp.IntfName,
+		IntfName:    intfName,
 		HomingHost:  cfgEp.HomingHost}
 
-	operEp.StateDriver = d.operVpp.StateDriver
+	operEp.StateDriver = d.vppOper.StateDriver
 	operEp.ID = id
 	err = operEp.Write()
 	if err != nil {
@@ -160,10 +179,10 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	return nil
 }
 
-// CreateVppIntf creates an interface in VPP for a given veth pair name.
+// CreateVppIntf creates a veth pair give a name.
 func (d *VppDriver) CreateVppIntf(intfName string) error {
 
-	// Get VPP port name
+	// Get VPP name
 	vppIntfName, err := d.getVppIntName(intfName)
 	if err != nil {
 		log.Infof("Error generating Vpp veth pair name. Err: %v", err)
@@ -177,6 +196,7 @@ func (d *VppDriver) CreateVppIntf(intfName string) error {
 		return err
 	}
 	log.Infof("Veth Pair Ready - int1:%s, int2:%s", intfName, vppIntfName)
+
 	// Add VPP interface
 	log.Infof("Creating interface in VPP with name host-%s", vppIntfName)
 	govpp.VppAddInterface(vppIntfName)
@@ -278,18 +298,18 @@ func (d *VppDriver) getIntfName() (string, error) {
 	//Create a random interface name
 	vethPrefix := "veth"
 
-	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
-	if err != nil {
-		log.Errorf("Could not generate interface name")
-		return "", err
-	}
-	intfName, _ := sid.Generate()
-	if err != nil {
-		log.Errorf("Could not generate interface name")
-		return "", err
-	}
+	// sid, err := shortid.New(1, shortid.DefaultABC, 2342)
+	// if err != nil {
+	// 	log.Errorf("Could not generate interface name")
+	// 	return "", err
+	// }
+	// intfName, _ := sid.Generate()
+	// if err != nil {
+	// 	log.Errorf("Could not generate interface name")
+	// 	return "", err
+	// }
 
-	intfName = fmt.Sprint(vethPrefix + intfName)
+	intfName := fmt.Sprint(vethPrefix + "sd1")
 	return intfName, nil
 
 }

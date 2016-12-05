@@ -147,7 +147,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	}
 
 	// Ask VPP to create the interface. Part is to create a veth pair.
-	err = d.CreateVppIntf(intfName)
+	err = d.createVppIntf(intfName)
 	if err != nil {
 		log.Errorf("Error creating vpp interface %s. Err: %v", intfName, err)
 		return err
@@ -160,7 +160,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		ServiceName: cfgEp.ServiceName,
 		IPAddress:   cfgEp.IPAddress,
 		MacAddress:  cfgEp.MacAddress,
-		IntfName:    intfName,
+		IntfName:    cfgEp.IntfName,
 		HomingHost:  cfgEp.HomingHost}
 
 	operEp.StateDriver = d.vppOper.StateDriver
@@ -180,7 +180,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 }
 
 // CreateVppIntf creates a veth pair give a name.
-func (d *VppDriver) CreateVppIntf(intfName string) error {
+func (d *VppDriver) createVppIntf(intfName string) error {
 
 	// Get VPP name
 	vppIntfName, err := d.getVppIntName(intfName)
@@ -309,7 +309,7 @@ func (d *VppDriver) getIntfName() (string, error) {
 	// 	return "", err
 	// }
 
-	intfName := fmt.Sprint(vethPrefix + "sd1")
+	intfName := fmt.Sprint(vethPrefix + "2yoo1")
 	return intfName, nil
 
 }

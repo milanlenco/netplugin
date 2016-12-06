@@ -8,7 +8,7 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	netutils "github.com/contiv/netplugin/utils/netutils"
 	govpp "github.com/fdio-stack/go-vpp/srv"
-	//"github.com/ventu-io/go-shortid"
+	netlink "github.com/vishvananda/netlink"
 )
 
 type vppOper int
@@ -93,8 +93,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	if bdID == 0 {
 		log.Infof("Could not create bridge domain")
 	} else {
-		fmt.Println("Bridge domain successfully created with id:")
-		fmt.Println(bdID)
+		log.Infof("Bridge domain successfully created with id: %d", bdID)
 	}
 	return nil
 }
@@ -124,7 +123,6 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		log.Errorf("Unable to get EpState %s. Err: %v", cfgEp.NetID, err)
 		return err
 	}
-	fmt.Println(cfgEp)
 
 	cfgNw := mastercfg.CfgNetworkState{}
 	cfgNw.StateDriver = d.vppOper.StateDriver
@@ -140,7 +138,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	operEp := &VppOperEndpointState{}
 	operEp.StateDriver = d.vppOper.StateDriver
 
-	intfName, err = d.getIntfName()
+	intfName, err = d.getIntfName(cfgEp)
 	if err != nil {
 		log.Errorf("Error generating intfName %s. Err: %v", intfName, err)
 		return err
@@ -161,7 +159,9 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		IPAddress:   cfgEp.IPAddress,
 		MacAddress:  cfgEp.MacAddress,
 		IntfName:    cfgEp.IntfName,
-		HomingHost:  cfgEp.HomingHost}
+		HomingHost:  cfgEp.HomingHost,
+		PortName:    intfName,
+	}
 
 	operEp.StateDriver = d.vppOper.StateDriver
 	operEp.ID = id
@@ -197,9 +197,18 @@ func (d *VppDriver) createVppIntf(intfName string) error {
 	}
 	log.Infof("Veth Pair Ready - int1:%s, int2:%s", intfName, vppIntfName)
 
-	// Add VPP interface
+	// Set host-side of the veth link pair state up
+	vppLinkIntfName, err := netlink.LinkByName(vppIntfName)
+	if err != nil {
+		return err
+	}
+	netlink.LinkSetUp(vppLinkIntfName)
 	log.Infof("Creating interface in VPP with name host-%s", vppIntfName)
+
 	govpp.VppAddInterface(vppIntfName)
+	// brecode - add return on error
+	govpp.VppInterfaceAdminUp(vppIntfName)
+	// brecode - add return on error
 
 	return nil
 }
@@ -294,22 +303,11 @@ func (d *VppDriver) InspectBgp() ([]byte, error) {
 	return nil, core.Errorf("Not implemented")
 }
 
-func (d *VppDriver) getIntfName() (string, error) {
+func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, error) {
 	//Create a random interface name
 	vethPrefix := "veth"
-
-	// sid, err := shortid.New(1, shortid.DefaultABC, 2342)
-	// if err != nil {
-	// 	log.Errorf("Could not generate interface name")
-	// 	return "", err
-	// }
-	// intfName, _ := sid.Generate()
-	// if err != nil {
-	// 	log.Errorf("Could not generate interface name")
-	// 	return "", err
-	// }
-
-	intfName := fmt.Sprint(vethPrefix + "2yoo1")
+	vethID := cfgEp.EndpointID[:9]
+	intfName := fmt.Sprint(vethPrefix + vethID)
 	return intfName, nil
 
 }

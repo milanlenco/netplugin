@@ -34,6 +34,7 @@ type VppOperEndpointState struct {
 	MacAddress  string `json:"macAddress"`
 	HomingHost  string `json:"homingHost"`
 	IntfName    string `json:"intfName"`
+	PortName    string `json:"portName"`
 }
 
 // Matches matches the fields updated from configuration state
@@ -49,8 +50,6 @@ func (s *VppOperEndpointState) Matches(c *mastercfg.CfgEndpointState) bool {
 // Write the state.
 func (s *VppOperEndpointState) Write() error {
 	key := fmt.Sprintf(vppEndpointOperPath, s.ID)
-	fmt.Println("Yo this is the key:")
-	fmt.Println(key)
 	return s.StateDriver.WriteState(key, s, json.Marshal)
 }
 

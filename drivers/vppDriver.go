@@ -145,7 +145,8 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	}
 
 	// Ask VPP to create the interface. Part is to create a veth pair.
-	err = d.createVppIntf(intfName)
+	networkID := cfgNw.CommonState.ID
+	err = d.addVppIntf(networkID, intfName)
 	if err != nil {
 		log.Errorf("Error creating vpp interface %s. Err: %v", intfName, err)
 		return err
@@ -179,8 +180,8 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	return nil
 }
 
-// CreateVppIntf creates a veth pair give a name.
-func (d *VppDriver) createVppIntf(intfName string) error {
+// addVppIntf creates a veth pair give a name.
+func (d *VppDriver) addVppIntf(id string, intfName string) error {
 
 	// Get VPP name
 	vppIntfName, err := d.getVppIntName(intfName)
@@ -209,6 +210,7 @@ func (d *VppDriver) createVppIntf(intfName string) error {
 	// brecode - add return on error
 	govpp.VppInterfaceAdminUp(vppIntfName)
 	// brecode - add return on error
+	govpp.VppInterfaceL2Bridge(id, vppIntfName)
 
 	return nil
 }
@@ -304,7 +306,7 @@ func (d *VppDriver) InspectBgp() ([]byte, error) {
 }
 
 func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, error) {
-	//Create a random interface name
+	//Create a random interface name using Endpoint ID
 	vethPrefix := "veth"
 	vethID := cfgEp.EndpointID[:9]
 	intfName := fmt.Sprint(vethPrefix + vethID)
@@ -313,7 +315,7 @@ func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, erro
 }
 
 func (d *VppDriver) getVppIntName(intfName string) (string, error) {
-	// Same interface format for vpp veth pair
+	// Same interface format for vpp veth pair without the prefix
 	vppIntfName := intfName[4:]
 	return vppIntfName, nil
 }

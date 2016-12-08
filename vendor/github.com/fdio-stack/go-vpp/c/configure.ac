@@ -1,0 +1,11 @@
+AC_INIT(libvpp_cgoclient, 0.1)
+
+AM_INIT_AUTOMAKE
+LT_INIT
+AM_SILENT_RULES([yes])
+
+AM_PROG_AS
+AC_PROG_CC
+AM_PROG_CC_C_O
+
+AC_OUTPUT([Makefile])

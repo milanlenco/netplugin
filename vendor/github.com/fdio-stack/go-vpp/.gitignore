@@ -1,0 +1,21 @@
+c/libvpp_cgoclient.a
+go/vpp_client
+vpp_client
+c/TAGS
+*.txt
+c/.libs/
+c/libvpp_cgoclient.la
+c/vpp_client.lo
+
+
+#binaries
+srv/vppapi
+testclient
+stats/stats
+
+#EMACS files
+\#*
+*~
+GPATH
+GRTAGS
+GTAGS

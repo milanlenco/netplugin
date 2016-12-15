@@ -418,8 +418,8 @@ static void vl_api_sw_interface_add_del_address_reply_t_handler (
     gocallback_add_del_address_reply();
 }
 
-static void vl_api_sw_interface_set_l2_bridge_reply_t_handler 
-(vl_api_sw_interface_set_l2_bridge_reply_t *mp)
+static void vl_api_sw_interface_set_l2_bridge_reply_t_handler (
+  vl_api_sw_interface_set_l2_bridge_reply_t *mp)
 {
     int * retval;
     retval = malloc(sizeof(int));
@@ -429,8 +429,19 @@ static void vl_api_sw_interface_set_l2_bridge_reply_t_handler
     gocallback_l2_bridge_set_interface_reply(retval);
 }
 
-static void vl_api_bridge_domain_add_del_reply_t_handler
-(vl_api_bridge_domain_add_del_reply_t *mp)
+static void vl_api_mpls_route_add_del_reply_t_handler (
+  vl_api_mpls_route_add_del_reply_t *mp)
+{
+    int * retval;
+    retval = malloc(sizeof(int));
+    *retval = ntohl(mp->retval);
+
+    fformat (stdout, "mpls_route_add_del reply %d\n", ntohl(mp->retval));
+    gocallback_mpls_route_add_del_reply(retval);
+}
+
+static void vl_api_bridge_domain_add_del_reply_t_handler (
+  vl_api_bridge_domain_add_del_reply_t *mp)
 {
     int * retval;
     retval = malloc(sizeof(int));
@@ -440,8 +451,8 @@ static void vl_api_bridge_domain_add_del_reply_t_handler
     gocallback_l2_bridge_reply(retval);
 }
 
-static void vl_api_af_packet_create_reply_t_handler
-(vl_api_af_packet_create_reply_t *mp)
+static void vl_api_af_packet_create_reply_t_handler (
+  vl_api_af_packet_create_reply_t *mp)
 {
     int * retval, * sw_if_index;
 
@@ -488,6 +499,7 @@ static void noop_handler (void *notused) { }
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
+_(MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)                   \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)                                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
@@ -497,17 +509,17 @@ _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply) \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)           \
 _(TAP_CONNECT_REPLY, tap_connect_reply)                                 \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
-_(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)                 \
+_(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)                     \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY, proxy_arp_intfc_enable_disable_reply) \
 _(RESET_FIB_REPLY, reset_fib_reply)                                     \
-_(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)           \
+_(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
-_(CREATE_LOOPBACK_REPLY, create_loopback_reply)                     \
-_(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                 \
+_(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
+_(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)   \
 _(VNET_SUMMARY_STATS_REPLY, vnet_summary_stats_reply)
 
@@ -810,21 +822,6 @@ void add_af_packet_interface(char* intf, client_main_t *cm)
 }
 
 
-/** \brief l2_bridge stuff
-    Receives callback on vl_api_sw_interface_set_l2_bridge_reply_t_handler
-    typedef VL_API_PACKED(struct _vl_api_bridge_domain_add_del {
-    u16 _vl_msg_id;
-    u32 client_index;
-    u32 context;
-    u32 bd_id;
-    u8 flood;
-    u8 uu_flood;
-    u8 forward;
-    u8 learn;
-    u8 arp_term;
-    u8 is_add;
-}) vl_api_bridge_domain_add_del_t;
-*/
 void add_l2_bridge (int bd_id, client_main_t *cm)
 {
     //TODO Check if bridge exists.
@@ -868,6 +865,40 @@ void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm)
     //    fformat(stdout,"c: sending add_l2_bridge_interface req. to vpp\n");
     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
+
+/* BRECODE - Find defautl values
+void set_mpls_route_add_del (***, client_main_t *cm)
+{
+    vl_api_mpls_route_add_del_t *mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset(mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_MPLS_ROUTE_ADD_DEL);
+    mp->client_index = cm->my_client_index;
+    mp->context = 0xdeadbeef;
+
+    mp->mr_eos
+    mp->mr_table_id
+    mp->mr_classify_table_index
+    mp->mr_create_table_if_needed
+    mp->mr_is_add
+    mp->mr_is_classify
+    mp->mr_is_multipath
+    mp->mr_is_resolve_host
+    mp->mr_is_resolve_attached
+    mp->mr_next_hop_proto_is_ip4
+    mp->mr_next_hop_weight
+    mp->mr_next_hop[16]
+    mp->mr_next_hop_n_out_labels
+    mp->mr_next_hop_sw_if_index
+    mp->mr_next_hop_table_id
+    mp->mr_next_hop_via_label
+    mp->mr_next_hop_out_label_stack[mr_next_hop_n_out_labels]
+
+    //    fformat(stdout,"c: sending set_mpls_route_add_del req. to vpp\n");
+    vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
+}
+*/
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;

@@ -8,11 +8,11 @@ extern client_main_t cm;
 */
 import "C"
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/briandowns/spinner"
 	"github.com/fdio-stack/go-vpp/srv/stats"
 
 	"encoding/binary"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -41,7 +41,7 @@ var vppBridgeByName = make(map[string]*vppBridge_t)
 //var vppIntfByBridge = make(map[int]*vppBridgeIntf_t)
 var next_bdid = 1
 
-/**
+/*
  ***************************************************************
 
  *** VPP BRIDGE DOMAIN
@@ -54,26 +54,26 @@ var rv_bridge int
 //export gocallback_l2_bridge_reply
 func gocallback_l2_bridge_reply(retval *C.int) {
 	rv_bridge = ^0
-	fmt.Printf("go: I'm the l2_bridge_reply callback. \n")
+	log.Infof("go: I'm the l2_bridge_reply callback. \n")
 	if int(*retval) == 0 {
 		rv_bridge = int(*retval)
 	}
 	wg_vppclient.Done()
 }
 
-func create_l2_bridge(bd_id int, cm *C.client_main_t) {
+func vpp_create_l2_bridge(bd_id int, cm *C.client_main_t) {
 	wg_vppclient.Add(1)
 	c_bd_id := C.int(bd_id)
 	C.add_l2_bridge(c_bd_id, cm)
-	fmt.Printf("go: Called l2_bridge\n")
+	log.Infof("go: Called l2_bridge\n")
 	wg_vppclient.Wait()
 	if rv_bridge == ^0 {
-		fmt.Printf("\n **** bollocks\n")
+		log.Infof("\n **** bollocks\n")
 		return // brecode - need to fix return value
 	}
 }
 
-/**
+/*
  ***************************************************************
 
  *** VPP BRIDGE DOMAIN SET INTERFACE
@@ -86,7 +86,7 @@ var rv_bridge_set_interface int
 //export gocallback_l2_bridge_set_interface_reply
 func gocallback_l2_bridge_set_interface_reply(retval *C.int) {
 	rv_bridge_set_interface = ^0
-	fmt.Printf("go: I'm the l2_bridge_set_interface_reply callback. \n")
+	log.Infof("go: I'm the l2_bridge_set_interface_reply callback. \n")
 	if int(*retval) == 0 {
 		rv_bridge_set_interface = int(*retval)
 	}
@@ -95,19 +95,52 @@ func gocallback_l2_bridge_set_interface_reply(retval *C.int) {
 
 func vpp_set_interface_l2_bridge(bd_id int, intf int, cm *C.client_main_t) {
 	wg_vppclient.Add(1)
-	fmt.Printf("Vpp host-int with value:%d", intf)
+	log.Infof("Vpp host-int with value:%d", intf)
 	c_rx_if_index := C.int(intf)
 	c_bd_id := C.int(bd_id)
 	C.set_l2_bridge_interface(c_bd_id, &c_rx_if_index, cm)
-	fmt.Printf("go: Called l2_bridge_set_interface\n")
+	log.Infof("go: Called l2_bridge_set_interface\n")
 	wg_vppclient.Wait()
 	if rv_bridge_set_interface == ^0 {
-		fmt.Printf("\n **** bollocks\n")
+		log.Infof("\n **** bollocks\n")
 		return // brecode - need to fix return value
 	}
 }
 
-/**
+/*
+ ***************************************************************
+
+ *** VPP ADD DEL ROUTE
+
+ ***************************************************************
+ */
+
+/*
+var rv_add_del_route int
+
+//export gocallback_l2_bridge_set_interface_reply
+func gocallback_mpls_route_add_del_reply(retval *C.int) {
+	rv_add_del_route = ^0
+	log.Infof("go: I'm the mpls_route_add_del_reply callback. \n")
+	if int(*retval) == 0 {
+		rv_add_del_route = int(*retval)
+	}
+	wg_vppclient.Done()
+}
+
+func vpp_add_del_route(bd_id int, intf int, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	C.set_l2_bridge_interface(c_bd_id, &c_rx_if_index, cm)
+	log.Infof("go: Called l2_bridge_set_interface\n")
+	wg_vppclient.Wait()
+	if rv_add_del_route == ^0 {
+		log.Infof("\n **** bollocks\n")
+		return // brecode - need to fix return value
+	}
+}
+*/
+
+/*
  ***************************************************************
 
  *** VPP INTERFACE
@@ -124,7 +157,7 @@ var af_packet_sw_if_index int
 //export gocallback_af_packet_create_reply
 func gocallback_af_packet_create_reply(retval *C.int, sw_if_index *C.int) {
 	af_packet_sw_if_index = ^0
-	fmt.Printf("go: af_packet_create_reply callback: retval = %d \n", *retval)
+	log.Infof("go: af_packet_create_reply callback: retval = %d \n", *retval)
 	if int(*retval) == 0 {
 		af_packet_sw_if_index = int(*sw_if_index)
 	}
@@ -136,10 +169,10 @@ func vpp_add_af_packet_interface(intf string, cm *C.client_main_t) {
 	C.add_af_packet_interface(C.CString(intf), cm)
 	wg_vppclient.Wait()
 	if af_packet_sw_if_index == ^0 {
-		fmt.Printf("\n **** bollocks\n")
+		log.Infof("\n **** bollocks\n")
 		return
 	}
-	fmt.Printf("go: af_packet created with sw_if_index = %d for interface = %s\n", af_packet_sw_if_index, intf)
+	log.Infof("go: af_packet created with sw_if_index = %d for interface = %s\n", af_packet_sw_if_index, intf)
 
 	vppInt := vppInterface_t{
 		intf,
@@ -161,7 +194,7 @@ func gocallback_vnet_summary_interface_counters(num_records *C.int, records *C.v
 	// CounterName for now is same for every record in batch so only retrieve and convert to GOLANG once
 	counter_name := C.GoString(records.counter_name)
 
-	fmt.Printf("go: vnet_summary_interface_counters: counter_name = %s\n", counter_name)
+	log.Infof("go: vnet_summary_interface_counters: counter_name = %s\n", counter_name)
 
 	for i := 0; i < (int)(*num_records); i++ {
 		//want to use the same struct and get it out of here and repack (as in dedup) in the stats handler
@@ -181,7 +214,7 @@ func gocallback_vnet_summary_interface_counters(num_records *C.int, records *C.v
 			ifRecord.Bogus = int64(records.packet_counter)
 		}
 
-		//		fmt.Printf("ts: %v sw_if_index: %d counter_name: %s packets: %d bytes: %d\n", ts, records.sw_if_index, C.GoString(records.counter_name), records.packet_counter, records.byte_counter)
+		//		log.Infof("ts: %v sw_if_index: %d counter_name: %s packets: %d bytes: %d\n", ts, records.sw_if_index, C.GoString(records.counter_name), records.packet_counter, records.byte_counter)
 
 		//todo add errors
 		stats.AddInterfaceRecord(ifRecord)
@@ -208,7 +241,7 @@ func gocallback_vnet_interface_counters(num_records *C.int, records *C.vpp_inter
 
 		switch counter_name {
 		default:
-			fmt.Printf("gocallback_vnet_interface_counters doesn't know what to do with counter_name: %s\n", counter_name)
+			log.Infof("gocallback_vnet_interface_counters doesn't know what to do with counter_name: %s\n", counter_name)
 		case "drop":
 			ifRecord.Drop = int64(records.counter)
 			break
@@ -286,7 +319,7 @@ func vpp_add_del_interface_ip_address(enable bool, sw_if_index int, ipaddr uint3
 
 //export gocallback_set_interface_flags
 func gocallback_set_interface_flags(retval *C.int) {
-	fmt.Printf("go: af_packet_create_reply callback: retval = %d \n", *retval)
+	log.Infof("go: af_packet_create_reply callback: retval = %d \n", *retval)
 	wg_vppclient.Done()
 }
 
@@ -294,13 +327,13 @@ func vpp_set_vpp_interface_adminup(intf string, cm *C.client_main_t) {
 
 	v, ok := vppIntfByName[intf]
 	if !ok {
-		fmt.Printf("%s not found in vppIntfByName\n", intf)
+		log.Infof("%s not found in vppIntfByName\n", intf)
 		return
 	}
 	wg_vppclient.Add(1)
 	sw_if_index := C.int(v.sw_if_index)
 	admin_up := C.int(1)
-	fmt.Printf("Interface with index %d is up\n", v.sw_if_index)
+	log.Infof("Interface with index %d is up\n", v.sw_if_index)
 	C.set_flags(&sw_if_index, &admin_up, cm)
 	wg_vppclient.Wait()
 	vppIntfByName[intf].admin_up = true
@@ -335,22 +368,22 @@ func vpp_disconnect() {
 
 /***** GO WRAPPERS ****/
 
-func add_interface_ip_address(intf string, ipaddr string, cm *C.client_main_t) {
+func vpp_add_interface_ip_address(intf string, ipaddr string, cm *C.client_main_t) {
 	var ip4_asuint uint32
 	var ip4_length uint8
 
 	if v, present := vppIntfByName[intf]; present {
 		if !v.admin_up {
-			fmt.Printf("%s is not up ... fixing that now\n", intf)
+			log.Infof("%s is not up ... fixing that now\n", intf)
 			vpp_set_vpp_interface_adminup(intf, cm)
 		}
 	} else {
-		fmt.Printf("Trying to add IP address to something that doesn't exist %s \n", intf)
+		log.Infof("Trying to add IP address to something that doesn't exist %s \n", intf)
 		return
 	}
 
 	ip, _, _ := net.ParseCIDR(ipaddr)
-	fmt.Printf("IP address: %+v\n", ip)
+	log.Infof("IP address: %+v\n", ip)
 	ipAddress, ipNet, _ := net.ParseCIDR(ipaddr)
 	ip4_asuint = binary.BigEndian.Uint32(ipAddress.To4())
 	tmp_ip4_length, _ := ipNet.Mask.Size()
@@ -365,9 +398,9 @@ func add_interface_ip_address(intf string, ipaddr string, cm *C.client_main_t) {
 /***** Debugging funcs ********/
 
 func dumpVppInterfaceMap() {
-	fmt.Printf("vppIntfByName dump: Has %d members: \n", len(vppIntfByName))
+	log.Infof("vppIntfByName dump: Has %d members: \n", len(vppIntfByName))
 	for _, v := range vppIntfByName {
-		fmt.Printf("%+v\n", *v)
+		log.Infof("%+v\n", *v)
 	}
 
 }
@@ -388,15 +421,19 @@ func VppConnect(name string) {
 	vpp_stats_enable_disable(enable_stats, &C.cm)
 }
 
-func VppBridgeDomain(name string) int {
+func VppAddBridgeDomain(name string) int {
 	bdid := next_bdid
 	vppBridge := vppBridge_t{
 		name, bdid, false}
-	create_l2_bridge(bdid, &C.cm) // brecode - need to get a return value and check...
+	vpp_create_l2_bridge(bdid, &C.cm) // brecode - need to get a return value and check...
 	vppBridgeByName[name] = &vppBridge
 	next_bdid++
 	return (bdid)
 }
+
+// func VppDelBridgeDomain(name string) {
+// 	delete(vppBridgeByName, name)
+// }
 
 func VppAddInterface(veth string) {
 	vpp_add_af_packet_interface(veth, &C.cm)
@@ -404,7 +441,7 @@ func VppAddInterface(veth string) {
 }
 
 func VppAddInterfaceIp(veth string, ip string) {
-	add_interface_ip_address(veth, ip, &C.cm)
+	vpp_add_interface_ip_address(veth, ip, &C.cm)
 }
 
 func VppInterfaceAdminUp(veth string) {
@@ -412,31 +449,15 @@ func VppInterfaceAdminUp(veth string) {
 }
 
 func VppInterfaceL2Bridge(name string, intf string) {
-	fmt.Printf("The bridge id is: %d", vppBridgeByName[name].bridge_id)
 	vpp_set_interface_l2_bridge(vppBridgeByName[name].bridge_id,
 		vppIntfByName[intf].sw_if_index, &C.cm)
 }
+
+// func VppAddDelRoute(name string, intf string) {
+// 	vpp_add_del_route(action string, id int, ...)
+// }
 
 func VppDisconnect() {
 	vpp_disconnect()
 	stats.Close()
 }
-
-// /***************** MAIN ******************/
-// func main() {
-
-// 	/* This block loops until Ctrl-C is hit then disconnects */
-// 	c := make(chan os.Signal, 1)
-// 	signal.Notify(c, os.Interrupt)
-// 	signal.Notify(c, syscall.SIGTERM)
-// 	go func() {
-// 		<-c
-// 		vpp_disconnect()
-// 		os.Exit(1)
-// 	}()
-// 	/* END clean up on SIGINT */
-
-// 	/* If we have to sit around for stats, lets do something constructive */
-// 	for {
-// 	}
-// }

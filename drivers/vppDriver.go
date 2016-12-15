@@ -89,7 +89,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	}
 
 	log.Infof("Create net %+v \n", cfgNw)
-	bdID := govpp.VppBridgeDomain(id)
+	bdID := govpp.VppAddBridgeDomain(id)
 	if bdID == 0 {
 		log.Infof("Could not create bridge domain")
 	} else {

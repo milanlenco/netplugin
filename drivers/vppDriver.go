@@ -71,6 +71,7 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	}
 	log.Infof("Initializing vpp driver")
 	govpp.VppConnect("vpp_contiv_client")
+	return nil
 }
 
 // Deinit is not implemented.

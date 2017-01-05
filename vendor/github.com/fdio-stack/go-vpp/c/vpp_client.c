@@ -23,13 +23,13 @@
 #define f64_print(a,b)
 
 #define vl_endianfun             /* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <vpp-api/vpe_all_api_h.h>
+#include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
 /*
@@ -595,8 +595,8 @@ void add_del_ip4_route (client_main_t *tm, int enable_disable)
     mp->table_id = ntohl(0);
     mp->create_vrf_if_needed = 1;
     /* Arp, please, if needed */
-    mp->resolve_if_needed = 1;
-    mp->resolve_attempts = ntohl(10);
+    // mp->resolve_if_needed = 1;
+    // mp->resolve_attempts = ntohl(10);
 
     mp->next_hop_sw_if_index = ntohl(5);
     mp->is_add = enable_disable;
@@ -866,7 +866,7 @@ void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm)
     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
 
-/* BRECODE - Find defautl values
+/* brecode - Set default values
 void set_mpls_route_add_del (***, client_main_t *cm)
 {
     vl_api_mpls_route_add_del_t *mp;
@@ -902,7 +902,7 @@ void set_mpls_route_add_del (***, client_main_t *cm)
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp-api/vpe.api.h>
+#include <vpp/api/vpe.api.h>
 #undef vl_api_version
 
 void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp) 

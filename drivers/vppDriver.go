@@ -3,6 +3,7 @@ package drivers
 import (
 	"encoding/json"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
@@ -70,7 +71,6 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	}
 	log.Infof("Initializing vpp driver")
 	govpp.VppConnect("vpp_contiv_client")
-	return nil
 }
 
 // Deinit is not implemented.

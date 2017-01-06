@@ -444,8 +444,62 @@ var Commands = []cli.Command{
 						Name:  "fwd-mode, b",
 						Usage: "forwarding mode (bridge,routing)",
 					},
+					cli.StringFlag{
+						Name:  "arp-mode, a",
+						Usage: "arp mode (proxy,flood)",
+					},
 				},
 				Action: setGlobal,
+			},
+		},
+	},
+	{
+		Name:  "aci-gw",
+		Usage: "ACI Gateway information",
+		Subcommands: []cli.Command{
+			{
+				Name:      "info",
+				Usage:     "Show aci gateway information",
+				ArgsUsage: " ",
+				Flags:     []cli.Flag{tenantFlag, allFlag, jsonFlag},
+				Action:    showAciGw,
+			},
+			{
+				Name:      "inspect",
+				Usage:     "Inspect aci gateway operational information",
+				ArgsUsage: " ",
+				Flags:     []cli.Flag{jsonFlag},
+				Action:    inspectAciGw,
+			},
+			{
+				Name:      "set",
+				Usage:     "Set aci-gw parameters",
+				ArgsUsage: " ",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:  "path-bindings, p",
+						Usage: "Blank or  Comma separated paths of the form topology/pod-1/paths-101/pathep-[eth1/14]",
+					},
+					cli.StringFlag{
+						Name:  "node-bindings, n",
+						Usage: "Blank or  Comma separated nodes of the form topology/pod-1/node-101",
+					},
+					cli.StringFlag{
+						Name:  "phys-dom, d",
+						Usage: "ACI physical domain name (e.g. containerDom)",
+					},
+					cli.StringFlag{
+						Name:  "enforce-policies, e",
+						Usage: "Should security policies be enforced (yes,no)",
+						Value: "yes",
+					},
+					cli.StringFlag{
+						Name:  "include-common-tenant, i",
+						Usage: "Should gateway look up objects in common tenant as well(yes,no)",
+						Value: "no",
+					},
+				},
+				Action: setAciGw,
 			},
 		},
 	},

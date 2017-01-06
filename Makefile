@@ -1,6 +1,7 @@
 
 .PHONY: all all-CI build clean default unit-test release tar checks go-version gofmt-src golint-src govet-src
 
+DEFAULT_DOCKER_VERSION := 1.12.3
 SHELL := /bin/bash
 EXCLUDE_DIRS := bin docs Godeps scripts test vagrant vendor
 PKG_DIRS := $(filter-out $(EXCLUDE_DIRS),$(subst /,,$(sort $(dir $(wildcard */)))))
@@ -18,10 +19,10 @@ TAR_FILENAME := $(NAME)-$(VERSION).$(TAR_EXT)
 TAR_LOC := .
 TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 GO_MIN_VERSION := 1.5.1
-GO_MAX_VERSION := 1.6.2
+GO_MAX_VERSION := 1.8
 GO_VERSION := $(shell go version | cut -d' ' -f3 | sed 's/go//')
 GOLINT_CMD := golint -set_exit_status
-GOFMT_CMD := gofmt -l
+GOFMT_CMD := gofmt -s -l
 GOVET_CMD := go tool vet
 
 all: build unit-test system-test ubuntu-tests
@@ -42,6 +43,13 @@ default: build
 deps:
 	./scripts/deps
 
+godep-save:
+	rm -rf vendor Godeps
+	godep save ./...
+
+godep-restore:
+	godep restore ./...
+
 gofmt-src: $(PKG_DIRS)
 	$(info +++ gofmt $(PKG_DIRS))
 	@for dir in $?; do $(GOFMT_CMD) $${dir} | grep "go"; [[ $$? -ne 0 ]] || exit 1; done
@@ -54,6 +62,10 @@ govet-src: $(PKG_DIRS)
 	$(info +++ govet $(PKG_DIRS))
 	@for dir in $?; do $(GOVET_CMD) $${dir} || exit 1;done
 
+misspell-src: $(PKG_DIRS)
+	$(info +++ check spelling $(PKG_DIRS))
+	misspell -locale US -error $?
+
 go-version:
 	$(info +++ check go version)
 ifneq ($(GO_VERSION), $(lastword $(sort $(GO_VERSION) $(GO_MIN_VERSION))))
@@ -63,7 +75,7 @@ ifneq ($(GO_VERSION), $(firstword $(sort $(GO_VERSION) $(GO_MAX_VERSION))))
 	$(error go version check failed, expected <= $(GO_MAX_VERSION), found $(GO_VERSION))
 endif
 
-checks: go-version gofmt-src golint-src govet-src
+checks: go-version gofmt-src golint-src govet-src misspell-src
 
 # We cannot perform sudo inside a golang, the only reason to split the rules
 # here
@@ -87,7 +99,7 @@ build:
 	make stop
 
 clean: deps
-	rm -rf $(GOPATH)/pkg/*
+	rm -rf $(GOPATH)/pkg/*/github.com/contiv/netplugin/
 	go clean -i -v ./...
 
 update:
@@ -100,7 +112,7 @@ ifdef NET_CONTAINER_BUILD
 start:
 else
 start:
-	CONTIV_NODE_OS=${CONTIV_NODE_OS} vagrant up
+	CONTIV_DOCKER_VERSION="$${CONTIV_DOCKER_VERSION:-$(DEFAULT_DOCKER_VERSION)}" CONTIV_NODE_OS=${CONTIV_NODE_OS} vagrant up
 endif
 
 #kubernetes demo targets
@@ -213,8 +225,8 @@ host-integ-test: host-cleanup start-aci-gw
 
 start-aci-gw:
 	@echo dev: starting aci gw...
-	docker pull contiv/aci-gw:integ_test
-	docker run --net=host -itd -e "APIC_URL=SANITY" -e "APIC_USERNAME=IGNORE" -e "APIC_PASSWORD=IGNORE" -e "APIC_LEAF_NODE=IGNORE" -e "APIC_PHYS_DOMAIN=IGNORE" --name=contiv-aci-gw contiv/aci-gw:integ_test
+	docker pull contiv/aci-gw:11-28-2016.1.3_2i
+	docker run --net=host -itd -e "APIC_URL=SANITY" -e "APIC_USERNAME=IGNORE" -e "APIC_PASSWORD=IGNORE" --name=contiv-aci-gw contiv/aci-gw:11-28-2016.1.3_2i
 
 host-cleanup:
 	@echo dev: cleaning up services...

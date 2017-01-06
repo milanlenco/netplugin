@@ -147,6 +147,9 @@ func (s *systemtestSuite) TestTriggerNodeReload(c *C) {
 		network.Ipv6Gateway = "2016:0617::254"
 	}
 	c.Assert(s.cli.NetworkPost(network), IsNil)
+	for _, node := range s.nodes {
+		c.Assert(node.checkSchedulerNetworkOnNodeCreated([]string{"private"}), IsNil)
+	}
 
 	numContainers := s.basicInfo.Containers
 	if numContainers < (len(s.nodes) * 2) {
@@ -262,6 +265,7 @@ func (s *systemtestSuite) TestTriggerNetPartition(c *C) {
 	c.Assert(s.cli.NetworkPost(network), IsNil)
 
 	for i := 0; i < s.basicInfo.Iterations; i++ {
+
 		containers, err := s.runContainers(s.basicInfo.Containers, false, "private", "default", nil, nil)
 		c.Assert(err, IsNil)
 
@@ -275,19 +279,21 @@ func (s *systemtestSuite) TestTriggerNetPartition(c *C) {
 
 			// flap the control interface
 			c.Assert(node.bringDownIf("eth1"), IsNil)
-			time.Sleep(50 * time.Second) // wait till sessions/locks timeout
+			time.Sleep(25 * time.Second) // wait till sessions/locks timeout
 			c.Assert(node.bringUpIf("eth1", nodeIP), IsNil)
 
-			time.Sleep(20 * time.Second)
+			time.Sleep(23 * time.Second)
 			c.Assert(s.verifyVTEPs(), IsNil)
 
 			c.Assert(s.verifyEPs(containers), IsNil)
 			time.Sleep(2 * time.Second)
-
 			// test ping for all containers
 			c.Assert(s.pingTest(containers), IsNil)
 		}
 
+		for _, node := range s.nodes {
+			c.Assert(node.checkSchedulerNetworkOnNodeCreated([]string{"private"}), IsNil)
+		}
 		c.Assert(s.removeContainers(containers), IsNil)
 	}
 

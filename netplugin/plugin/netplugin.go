@@ -190,7 +190,7 @@ func (p *NetPlugin) DeleteServiceLB(servicename string, spec *core.ServiceSpec) 
 	return p.NetworkDriver.DelSvcSpec(servicename, spec)
 }
 
-//SvcProviderUpdate hhhh
+//SvcProviderUpdate function
 func (p *NetPlugin) SvcProviderUpdate(servicename string, providers []string) {
 	p.NetworkDriver.SvcProviderUpdate(servicename, providers)
 }
@@ -210,17 +210,29 @@ func (p *NetPlugin) InspectBgp() ([]byte, error) {
 	return p.NetworkDriver.InspectBgp()
 }
 
-//GlobalFwdModeUpdate update the forwarding mode
+// InspectNameserver returns current state of the nameserver
+func (p *NetPlugin) InspectNameserver() ([]byte, error) {
+	return p.NetworkDriver.InspectNameserver()
+}
+
+//GlobalConfigUpdate update global config
+func (p *NetPlugin) GlobalConfigUpdate(cfg Config) error {
+	return p.NetworkDriver.GlobalConfigUpdate(cfg.Instance)
+}
+
+//GlobalFwdModeUpdate update the global config
 func (p *NetPlugin) GlobalFwdModeUpdate(cfg Config) {
 	var err error
 
 	if p.NetworkDriver != nil {
+		logrus.Infof("GlobalFwdModeUpdate De-initializing NetworkDriver")
 		p.NetworkDriver.Deinit()
 		p.NetworkDriver = nil
 	}
 
 	cfg.Instance.StateDriver, _ = utils.GetStateDriver()
 	p.NetworkDriver, err = utils.NewNetworkDriver(cfg.Drivers.Network, &cfg.Instance)
+	logrus.Infof("GlobalFwdModeUpdate Initializing NetworkDriver")
 
 	if err != nil {
 		logrus.Errorf("Error updating global forwarding mode %v", err)
@@ -229,6 +241,7 @@ func (p *NetPlugin) GlobalFwdModeUpdate(cfg Config) {
 
 	defer func() {
 		if err != nil {
+			logrus.Errorf("GlobalFwdModeUpdate De-initializing due to error: %v", err)
 			p.NetworkDriver.Deinit()
 		}
 	}()

@@ -285,7 +285,7 @@ func (w *swarm) startIperfClient(c *container, ip, limit string, isErr bool) err
 	}
 
 	if success {
-		logrus.Infof("starting iperf client on conatiner:%s for server ip: %s", c, ip)
+		logrus.Infof("starting iperf client on container:%s for server ip: %s", c, ip)
 		bwFormat := strings.Split(bw, "Server Report:")
 		bwString := strings.Split(bwFormat[1], "Bytes ")
 		newBandwidth := strings.Split(bwString[1], "bits/sec")
@@ -344,7 +344,7 @@ func (w *swarm) tcFilterShow(bw string) error {
 	if bwInt == outputInt {
 		logrus.Infof("Applied bandwidth: %dkbits equals tc qdisc rate: %dkbits", bwInt, outputInt)
 	} else {
-		logrus.Errorf("Applied bandiwdth: %dkbits does not match the tc rate: %d ", bwInt, outputInt)
+		logrus.Errorf("Applied bandwidth: %dkbits does not match the tc rate: %d ", bwInt, outputInt)
 		return errors.New("Applied bandwidth does not match the tc qdisc rate")
 	}
 	return nil
@@ -392,7 +392,7 @@ func (w *swarm) cleanupContainers() error {
 }
 func (w *swarm) startNetplugin(args string) error {
 	logrus.Infof("Starting netplugin on %s", w.node.Name())
-	cmd := "sudo " + w.node.suite.basicInfo.BinPath + "/netplugin -plugin-mode docker -vlan-if " + w.node.suite.hostInfo.HostDataInterface + " --cluster-store " + w.node.suite.basicInfo.ClusterStore + " " + args + "&> /tmp/netplugin.log"
+	cmd := "sudo " + w.node.suite.basicInfo.BinPath + "/netplugin -plugin-mode docker -vlan-if " + w.node.suite.hostInfo.HostDataInterfaces + " --cluster-store " + w.node.suite.basicInfo.ClusterStore + " " + args + "&> /tmp/netplugin.log"
 	return w.node.tbnode.RunCommandBackground(cmd)
 }
 
@@ -563,6 +563,38 @@ func (w *swarm) checkSchedulerNetworkCreated(nwName string, expectedOp bool) err
 		return nil
 	}
 	return err
+}
+
+func (w *swarm) checkSchedulerNetworkOnNodeCreated(nwNames []string, n *node) error {
+	ch := make(chan error, 1)
+	for _, nwName := range nwNames {
+		go func(nwName string, n *node, ch chan error) {
+			logrus.Infof("Checking whether docker network %s is created on node %s", nwName, n.Name())
+			cmd := fmt.Sprintf("docker network ls | grep netplugin | grep %s | awk \"{print \\$2}\"", nwName)
+			logrus.Infof("Command to be executed is = %s", cmd)
+			count := 0
+			//check if docker network is created for a minute
+			for count < 60 {
+				op, err := n.runCommand(cmd)
+
+				if err == nil {
+					ret := strings.Contains(op, nwName)
+					if ret == true {
+						ch <- nil
+					}
+					count++
+					time.Sleep(1 * time.Second)
+				}
+			}
+			ch <- fmt.Errorf("Swarm Network %s not created on node %s \n", nwName, n.Name())
+		}(nwName, n, ch)
+	}
+	for range nwNames {
+		if err := <-ch; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *swarm) waitForListeners() error {

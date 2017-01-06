@@ -13,9 +13,11 @@ cp -rf $GOSRC/github.com/contiv/netplugin/mgmtfn/k8splugin/certs /tmp
 run_in_vagrant=false
 coverage_basic=false
 coverage_detail=false
+timeout=${TIMEOUT:=10m}
 test_packages="github.com/contiv/netplugin/drivers \
     github.com/contiv/netplugin/state \
     github.com/contiv/netplugin/netplugin/plugin \
+    github.com/contiv/netplugin/netplugin/nameserver \
     github.com/contiv/netplugin/utils/netutils \
     github.com/contiv/netplugin/netmaster/gstate \
     github.com/contiv/netplugin/netmaster/master \
@@ -81,21 +83,30 @@ fi
 cd $GOSRC/github.com/contiv/netplugin
 find . -follow -type f -exec tail -1 {} \; >& /dev/null
 
-for pkg in ${test_packages}
-do
+function test_package {
   # running in the sand box
   if ${coverage_basic}; then
       (cd $GOSRC/github.com/contiv/netplugin && \
-      go test ${pkg} -coverprofile=cover.out) || exit 1
+      go test $1 -timeout ${timeout} -coverprofile=cover.out) || exit 1
   elif ${coverage_detail}; then
       (cd $GOSRC/github.com/contiv/netplugin && \
-      go test ${pkg} -coverprofile=cover.out && \
+      go test $1 -timeout ${timeout} -coverprofile=cover.out && \
       go tool cover -func=cover.out) || exit 1
   else
       (cd $GOSRC/github.com/contiv/netplugin && \
-      go test -v ${pkg}) || exit 1
+      go test -timeout ${timeout} -v $1) || exit 1
   fi
+}
+
+for pkg in ${test_packages}
+do
+  test_package ${pkg}
 done
+
+cp -f $GOSRC/github.com/contiv/netplugin/mgmtfn/k8splugin/certs/contiv_token.json /tmp/certs/contiv.json
+test_package github.com/contiv/netplugin/mgmtfn/k8splugin
+cp -f $GOSRC/github.com/contiv/netplugin/mgmtfn/k8splugin/certs/contiv_certs.json /tmp/certs/contiv.json
+test_package github.com/contiv/netplugin/mgmtfn/k8splugin
 
 echo "Sandbox: Tests succeeded!"
 exit 0

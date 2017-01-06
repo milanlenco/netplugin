@@ -17,6 +17,7 @@ package master
 
 import (
 	"errors"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/netmaster/intent"
@@ -29,8 +30,13 @@ func AddBgp(stateDriver core.StateDriver, bgpCfg *intent.ConfigBgp) error {
 	log.Infof("Adding bgp neighbor {%v}", bgpCfg)
 	aci, _ := IsAciConfigured()
 	if aci {
+<<<<<<< HEAD
 		log.Errorf("Invalid configuration. Not supported in ACI fabric mode")
 		return errors.New("Not supported in ACI fabric mode")
+=======
+		log.Errorf("Invalid configuration. Not supported in ACI fabric mode.")
+		return errors.New("not supported in ACI fabric mode")
+>>>>>>> a1ee32b98e197afb0900dc2ba0dc04902c1c4a8a
 	}
 	bgpState := &mastercfg.CfgBgpState{}
 	bgpState.Hostname = bgpCfg.Hostname
@@ -40,12 +46,7 @@ func AddBgp(stateDriver core.StateDriver, bgpCfg *intent.ConfigBgp) error {
 	bgpState.Neighbor = bgpCfg.Neighbor
 	bgpState.StateDriver = stateDriver
 	bgpState.ID = bgpCfg.Hostname
-	err := bgpState.Write()
-
-	if err != nil {
-		return err
-	}
-	return nil
+	return bgpState.Write()
 }
 
 //DeleteBgp deletes from etcd state

@@ -371,8 +371,8 @@ func (k *kubernetes) tcFilterShow(bw string) error {
 	if bwInt == outputInt {
 		logrus.Infof("Applied bandwidth: %dkbits equals tc qdisc rate: %dkbits", bwInt, outputInt)
 	} else {
-		logrus.Errorf("Applied bandiwdth: %dkbits does not match the tc rate: %d ", bwInt, outputInt)
-		return errors.New("Applied bandwidth doe sot match teh tc qdisc rate")
+		logrus.Errorf("Applied bandwidth: %dkbits does not match the tc rate: %d ", bwInt, outputInt)
+		return errors.New("Applied bandwidth doe sot match the tc qdisc rate")
 	}
 	return nil
 }
@@ -432,7 +432,7 @@ func (k *kubernetes) startNetplugin(args string) error {
 		return nil
 	}
 	logrus.Infof("Starting netplugin on %s", k.node.Name())
-	return k.node.tbnode.RunCommandBackground("sudo " + k.node.suite.basicInfo.BinPath + "/netplugin -plugin-mode kubernetes -vlan-if " + k.node.suite.hostInfo.HostDataInterface + " --cluster-store " + k.node.suite.basicInfo.ClusterStore + " " + args + "&> /tmp/netplugin.log")
+	return k.node.tbnode.RunCommandBackground("sudo " + k.node.suite.basicInfo.BinPath + "/netplugin -plugin-mode kubernetes -vlan-if " + k.node.suite.hostInfo.HostDataInterfaces + " --cluster-store " + k.node.suite.basicInfo.ClusterStore + " " + args + "&> /tmp/netplugin.log")
 }
 
 func (k *kubernetes) stopNetplugin() error {
@@ -613,6 +613,10 @@ func (k *kubernetes) checkPingWithCount(c *container, ipaddr string, count int) 
 	return nil
 }
 func (k *kubernetes) checkSchedulerNetworkCreated(nwName string, expectedOp bool) error {
+	return nil
+}
+
+func (k *kubernetes) checkSchedulerNetworkOnNodeCreated(nwName []string, n *node) error {
 	return nil
 }
 

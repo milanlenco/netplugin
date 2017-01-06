@@ -24,16 +24,18 @@ import (
 
 	"github.com/contiv/libovsdb"
 	"github.com/contiv/netplugin/core"
+	"github.com/contiv/ofnet"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 // Max number of retries to get ofp port number
-const maxOfportRetry = 10
+const maxOfportRetry = 20
 
 // OvsdbDriver is responsible for programming OVS using ovsdb protocol. It also
 // implements the libovsdb.Notifier interface to keep cache of ovs table state.
 type OvsdbDriver struct {
+	ovsSwitch  *OvsSwitch
 	bridgeName string // Name of the bridge we are operating on
 	ovs        *libovsdb.OvsdbClient
 	cache      map[string]map[libovsdb.UUID]libovsdb.Row
@@ -136,6 +138,32 @@ func (d *OvsdbDriver) populateCache(updates libovsdb.TableUpdates) {
 // Update updates the ovsdb with the libovsdb.TableUpdates.
 func (d *OvsdbDriver) Update(context interface{}, tableUpdates libovsdb.TableUpdates) {
 	d.populateCache(tableUpdates)
+	intfUpds, ok := tableUpdates.Updates["Interface"]
+	if !ok {
+		return
+	}
+
+	for _, intfUpd := range intfUpds.Rows {
+		intf := intfUpd.New.Fields["name"]
+		oldLacpStatus, ok := intfUpd.Old.Fields["lacp_current"]
+		if !ok {
+			return
+		}
+		newLacpStatus, ok := intfUpd.New.Fields["lacp_current"]
+		if !ok {
+			return
+		}
+		if oldLacpStatus == newLacpStatus || d.ovsSwitch == nil {
+			return
+		}
+
+		linkUpd := ofnet.LinkUpdateInfo{
+			LinkName:   intf.(string),
+			LacpStatus: newLacpStatus.(bool),
+		}
+		log.Debugf("LACP_UPD: Interface: %+v. LACP Status - (Old: %+v, New: %+v)\n", intf, oldLacpStatus, newLacpStatus)
+		d.ovsSwitch.HandleLinkUpdates(linkUpd)
+	}
 }
 
 // Locked satisfies a libovsdb interface dependency.
@@ -180,7 +208,7 @@ func (d *OvsdbDriver) performOvsdbOps(ops []libovsdb.Operation) error {
 // Create or delete an OVS bridge instance
 func (d *OvsdbDriver) createDeleteBridge(bridgeName, failMode string, op oper) error {
 	namedUUIDStr := "netplugin"
-	brUUID := []libovsdb.UUID{libovsdb.UUID{GoUuid: namedUUIDStr}}
+	brUUID := []libovsdb.UUID{{GoUuid: namedUUIDStr}}
 	protocols := []string{"OpenFlow10", "OpenFlow11", "OpenFlow12", "OpenFlow13"}
 	opStr := "insert"
 	if op != operCreateBridge {
@@ -270,8 +298,8 @@ func (d *OvsdbDriver) CreatePort(intfName, intfType, id string, tag, burst int, 
 	// intfName is assumed to be unique enough to become uuid
 	portUUIDStr := intfName
 	intfUUIDStr := fmt.Sprintf("Intf%s", intfName)
-	portUUID := []libovsdb.UUID{libovsdb.UUID{GoUuid: portUUIDStr}}
-	intfUUID := []libovsdb.UUID{libovsdb.UUID{GoUuid: intfUUIDStr}}
+	portUUID := []libovsdb.UUID{{GoUuid: portUUIDStr}}
+	intfUUID := []libovsdb.UUID{{GoUuid: intfUUIDStr}}
 	opStr := "insert"
 
 	var err error
@@ -342,6 +370,138 @@ func (d *OvsdbDriver) CreatePort(intfName, intfType, id string, tag, burst int, 
 	return d.performOvsdbOps(operations)
 }
 
+//CreatePortBond creates port bond in OVS
+func (d *OvsdbDriver) CreatePortBond(intfList []string, bondName string) error {
+
+	var err error
+	var ops []libovsdb.Operation
+	var intfUUIDList []libovsdb.UUID
+	opStr := "insert"
+
+	// Add all the interfaces to the interface table
+	for _, intf := range intfList {
+		intfUUIDStr := fmt.Sprintf("Intf%s", intf)
+		intfUUID := []libovsdb.UUID{{GoUuid: intfUUIDStr}}
+		intfUUIDList = append(intfUUIDList, intfUUID...)
+
+		// insert/delete a row in Interface table
+		intfOp := libovsdb.Operation{}
+		iface := make(map[string]interface{})
+		iface["name"] = intf
+
+		// interface table ops
+		intfOp = libovsdb.Operation{
+			Op:       opStr,
+			Table:    interfaceTable,
+			Row:      iface,
+			UUIDName: intfUUIDStr,
+		}
+		ops = append(ops, intfOp)
+	}
+
+	// Insert bond information in Port table
+	portOp := libovsdb.Operation{}
+	port := make(map[string]interface{})
+	port["name"] = bondName
+	port["vlan_mode"] = "trunk"
+	port["interfaces"], err = libovsdb.NewOvsSet(intfUUIDList)
+	if err != nil {
+		return err
+	}
+
+	// Set LACP and Hash properties
+	// "balance-tcp" - balances flows among slaves based on L2, L3, and L4 protocol information such as
+	// destination MAC address, IP address, and TCP port
+	// lacp-fallback-ab:true - Fall back to activ-backup mode when LACP negotiation fails
+	port["bond_mode"] = "balance-tcp"
+
+	port["lacp"] = "active"
+	lacpMap := make(map[string]string)
+	lacpMap["lacp-fallback-ab"] = "true"
+	port["other_config"], err = libovsdb.NewOvsMap(lacpMap)
+
+	portUUIDStr := bondName
+	portUUID := []libovsdb.UUID{{GoUuid: portUUIDStr}}
+	portOp = libovsdb.Operation{
+		Op:       opStr,
+		Table:    portTable,
+		Row:      port,
+		UUIDName: portUUIDStr,
+	}
+	ops = append(ops, portOp)
+
+	// Mutate the Ports column of the row in the Bridge table to include bond name
+	mutateSet, _ := libovsdb.NewOvsSet(portUUID)
+	mutation := libovsdb.NewMutation("ports", opStr, mutateSet)
+	condition := libovsdb.NewCondition("name", "==", d.bridgeName)
+	mutateOp := libovsdb.Operation{
+		Op:        "mutate",
+		Table:     bridgeTable,
+		Mutations: []interface{}{mutation},
+		Where:     []interface{}{condition},
+	}
+	ops = append(ops, mutateOp)
+
+	return d.performOvsdbOps(ops)
+
+}
+
+// DeletePortBond deletes a port bond from OVS
+func (d *OvsdbDriver) DeletePortBond(bondName string, intfList []string) error {
+
+	var ops []libovsdb.Operation
+	var condition []interface{}
+	portUUIDStr := bondName
+	portUUID := []libovsdb.UUID{{GoUuid: portUUIDStr}}
+	opStr := "delete"
+
+	for _, intfName := range intfList {
+		// insert/delete a row in Interface table
+		condition = libovsdb.NewCondition("name", "==", intfName)
+		intfOp := libovsdb.Operation{
+			Op:    opStr,
+			Table: interfaceTable,
+			Where: []interface{}{condition},
+		}
+		ops = append(ops, intfOp)
+	}
+
+	// insert/delete a row in Port table
+	condition = libovsdb.NewCondition("name", "==", bondName)
+	portOp := libovsdb.Operation{
+		Op:    opStr,
+		Table: portTable,
+		Where: []interface{}{condition},
+	}
+	ops = append(ops, portOp)
+
+	// also fetch the port-uuid from cache
+	d.cacheLock.RLock()
+	for uuid, row := range d.cache["Port"] {
+		name := row.Fields["name"].(string)
+		if name == bondName {
+			portUUID = []libovsdb.UUID{uuid}
+			break
+		}
+	}
+	d.cacheLock.RUnlock()
+
+	// mutate the Ports column of the row in the Bridge table
+	mutateSet, _ := libovsdb.NewOvsSet(portUUID)
+	mutation := libovsdb.NewMutation("ports", opStr, mutateSet)
+	condition = libovsdb.NewCondition("name", "==", d.bridgeName)
+	mutateOp := libovsdb.Operation{
+		Op:        "mutate",
+		Table:     bridgeTable,
+		Mutations: []interface{}{mutation},
+		Where:     []interface{}{condition},
+	}
+	ops = append(ops, mutateOp)
+
+	// Perform OVS transaction
+	return d.performOvsdbOps(ops)
+}
+
 //UpdatePolicingRate will update the ingress policing rate in interface table.
 func (d *OvsdbDriver) UpdatePolicingRate(intfName string, burst int, bandwidth int64) error {
 	bw := int(bandwidth)
@@ -368,7 +528,7 @@ func (d *OvsdbDriver) UpdatePolicingRate(intfName string, burst int, bandwidth i
 // DeletePort deletes a port from OVS
 func (d *OvsdbDriver) DeletePort(intfName string) error {
 	portUUIDStr := intfName
-	portUUID := []libovsdb.UUID{{portUUIDStr}}
+	portUUID := []libovsdb.UUID{{GoUuid: portUUIDStr}}
 	opStr := "delete"
 
 	// insert/delete a row in Interface table
@@ -418,8 +578,8 @@ func (d *OvsdbDriver) DeletePort(intfName string) error {
 func (d *OvsdbDriver) CreateVtep(intfName string, vtepRemoteIP string) error {
 	portUUIDStr := intfName
 	intfUUIDStr := fmt.Sprintf("Intf%s", intfName)
-	portUUID := []libovsdb.UUID{{portUUIDStr}}
-	intfUUID := []libovsdb.UUID{{intfUUIDStr}}
+	portUUID := []libovsdb.UUID{{GoUuid: portUUIDStr}}
+	intfUUID := []libovsdb.UUID{{GoUuid: intfUUIDStr}}
 	opStr := "insert"
 	intfType := "vxlan"
 	var err error
@@ -493,7 +653,7 @@ func (d *OvsdbDriver) AddController(ipAddr string, portNo uint16) error {
 	// Format target string
 	target := fmt.Sprintf("tcp:%s:%d", ipAddr, portNo)
 	ctrlerUUIDStr := fmt.Sprintf("local")
-	ctrlerUUID := []libovsdb.UUID{libovsdb.UUID{GoUuid: ctrlerUUIDStr}}
+	ctrlerUUID := []libovsdb.UUID{{GoUuid: ctrlerUUIDStr}}
 
 	// If controller already exists, nothing to do
 	if d.IsControllerPresent(target) {

@@ -130,7 +130,7 @@ func cleanupState() {
 	}
 }
 
-// checkError checks for error and fails teh test
+// checkError checks for error and fails the test
 func checkError(t *testing.T, testStr string, err error) {
 	if err != nil {
 		t.Fatalf("Error during %s. Err: %v", testStr, err)
@@ -247,13 +247,14 @@ func checkInspectGlobal(t *testing.T, expError bool, allocedVlans, allocedVxlans
 }
 
 // checkGlobalSet sets global state and verifies state
-func checkGlobalSet(t *testing.T, expError bool, fabMode, vlans, vxlans, fwdMode string) {
+func checkGlobalSet(t *testing.T, expError bool, fabMode, vlans, vxlans, fwdMode string, arpMode string) {
 	gl := client.Global{
 		Name:             "global",
 		NetworkInfraType: fabMode,
 		Vlans:            vlans,
 		Vxlans:           vxlans,
 		FwdMode:          fwdMode,
+		ArpMode:          arpMode,
 	}
 	err := contivClient.GlobalPost(&gl)
 	if err != nil && !expError {
@@ -306,6 +307,45 @@ func checkGlobalSet(t *testing.T, expError bool, fabMode, vlans, vxlans, fwdMode
 		if err := vlanRsrc.Read("global"); err != nil {
 			t.Fatalf("Error reading vlan resource. Err: %v", err)
 		}
+	}
+}
+
+// checkAciGwSet sets AciGw state and verifies verifies it
+func checkAciGwSet(t *testing.T, expError bool, enf, comTen, paths, nodes, domain string) {
+	aciConf := client.AciGw{
+		Name:                "aciGw",
+		IncludeCommonTenant: comTen,
+		EnforcePolicies:     enf,
+		PathBindings:        paths,
+		NodeBindings:        nodes,
+		PhysicalDomain:      domain,
+	}
+	err := contivClient.AciGwPost(&aciConf)
+	if err != nil && !expError {
+		t.Fatalf("Error setting aci {%+v}. Err: %v", aciConf, err)
+	} else if err == nil && expError {
+		t.Fatalf("Set aci {%+v} succeeded while expecting error", aciConf)
+	} else if err == nil {
+		// verify global state
+		gotAciGw, err := contivClient.AciGwGet("aciGw")
+		if err != nil {
+			t.Fatalf("Error getting aci object. Err: %v", err)
+		}
+
+		// verify expected values
+		if gotAciGw.EnforcePolicies != enf || gotAciGw.PathBindings != paths || gotAciGw.NodeBindings != nodes || gotAciGw.PhysicalDomain != domain || gotAciGw.IncludeCommonTenant != comTen {
+			t.Fatalf("Error Got aci state {%+v} does not match expected %s, %s, %s, %s, %s", gotAciGw, enf, comTen, paths, nodes, domain)
+		}
+
+	}
+}
+
+func checkAciGwDelete(t *testing.T, expError bool, name string) {
+	err := contivClient.AciGwDelete(name)
+	if err != nil && !expError {
+		t.Fatalf("Error deleting aci. Err: %v", err)
+	} else if err == nil && expError {
+		t.Fatalf("Delete aci succeeded while expecting error")
 	}
 }
 
@@ -405,7 +445,7 @@ func checkCreateNetProfile(t *testing.T, expError bool, dscp, burst int, bandwid
 	if err != nil && !expError {
 		t.Fatalf("Error creating Netprofile {%+v}. Err: %v", np, err)
 	} else if err == nil && expError {
-		t.Fatalf("Create NetProfile {%+v} succeded while expecing error", np)
+		t.Fatalf("Create NetProfile {%+v} succeeded while expecing error", np)
 	} else if err == nil {
 		//check if netprofile is created.
 		_, err := contivClient.NetprofileGet(tenantName, profileName)
@@ -435,7 +475,7 @@ func checkDeleteNetProfile(t *testing.T, expError bool, profileName, tenantName 
 	if err != nil && !expError {
 		t.Fatalf("Error deleting Netprofile %s/%s Err: %v", profileName, tenantName, err)
 	} else if err == nil && expError {
-		t.Fatalf("delete NetProfile %s/%s succeded while expecing error", profileName, tenantName)
+		t.Fatalf("delete NetProfile %s/%s succeeded while expecing error", profileName, tenantName)
 	} else if err == nil {
 		//check if netprofile is deleted.
 		_, err := contivClient.NetprofileGet(tenantName, profileName)
@@ -491,7 +531,7 @@ func checkCreateEpgNp(t *testing.T, expError bool, tenant, ProfileName, network,
 	if err != nil && !expError {
 		t.Fatalf("Error creating epg {%+v}. Err: %v", epg, err)
 	} else if err == nil && expError {
-		t.Fatalf("Create epg {%+v} succeded while expecing error", epg)
+		t.Fatalf("Create epg {%+v} succeeded while expecing error", epg)
 	} else if err == nil {
 		// verify epg is created
 		_, err := contivClient.EndpointGroupGet(tenant, group)
@@ -834,34 +874,34 @@ func TestTenantAddDelete(t *testing.T) {
 
 	// Try creating invalid names and verify we get an error
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant:invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant|invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant\\invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant#invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "-tenant"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant@invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant!invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant~invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant*invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 	if contivClient.TenantPost(&client.Tenant{TenantName: "tenant^invalid"}) == nil {
-		t.Fatalf("tenant create succedded while expecting error")
+		t.Fatalf("tenant create succeeded while expecting error")
 	}
 
 	// delete tenant
@@ -976,7 +1016,7 @@ func TestOverlappingSubnets(t *testing.T) {
 func TestNetworkAddDeleteACIMode(t *testing.T) {
 
 	// set aci mode
-	checkGlobalSet(t, false, "aci", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "aci", "1-4094", "1-10000", "bridge", "flood")
 
 	// Create Network and Delete it
 	checkCreateNetwork(t, false, "default", "contiv", "", "vlan", "10.1.1.1/24", "10.1.1.254", 1, "", "")
@@ -996,10 +1036,10 @@ func TestNetworkAddDeleteACIMode(t *testing.T) {
 	checkCreateNetwork(t, false, "default", "contiv-ipv6", "", "vxlan", "10.1.1.1/16", "", 1, "2016:0617::/120", "")
 	verifyNetworkState(t, "default", "contiv-ipv6", "data", "vxlan", "10.1.1.1", "", 16, 1, 1, "2016:0617::", "", 120)
 	checkDeleteNetwork(t, false, "default", "contiv-ipv6")
+	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge", "proxy")
 
 }
 
-/*
 // TestNetworkAddDelete tests network create/delete REST api
 func TestNetworkAddDelete(t *testing.T) {
 	// Basic vlan network
@@ -1095,7 +1135,6 @@ func TestNetworkAddDelete(t *testing.T) {
 	// Try deleting a non-existing network
 	checkDeleteNetwork(t, true, "default", "contiv")
 }
-*/
 
 func TestDynamicGlobalVlanRange(t *testing.T) {
 
@@ -1117,7 +1156,7 @@ func TestDynamicGlobalVlanRange(t *testing.T) {
 	verifyNetworkState(t, "default", "contiv3", "data", "vlan", "12.1.1.1", "12.1.1.254", 24, 300, 0, "", "", 0)
 
 	//Change global state
-	checkGlobalSet(t, false, "default", "9-301", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "9-301", "1-10000", "bridge", "proxy")
 
 	//verify creation of network with active tag fails after change in global vlan range
 	checkCreateNetwork(t, true, "default", "contiv4", "", "vlan", "13.1.1.1/24", "13.1.1.254", 10, "", "")
@@ -1132,12 +1171,12 @@ func TestDynamicGlobalVlanRange(t *testing.T) {
 	verifyNetworkState(t, "default", "contiv6", "data", "vlan", "15.1.1.1", "15.1.1.254", 24, 299, 0, "", "", 0)
 
 	//check global state change fails if there are active tags
-	checkGlobalSet(t, true, "default", "50-301", "1-10000", "bridge")
+	checkGlobalSet(t, true, "default", "50-301", "1-10000", "bridge", "proxy")
 	//check global state change fails if there are active tags
-	checkGlobalSet(t, true, "default", "1-200", "1-10000", "bridge")
+	checkGlobalSet(t, true, "default", "1-200", "1-10000", "bridge", "proxy")
 
 	//check global vlan range can be changed to bigger range
-	checkGlobalSet(t, false, "default", "1-800", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "1-800", "1-10000", "bridge", "flood")
 	checkCreateNetwork(t, false, "default", "contiv7", "", "vlan", "16.1.1.1/24", "16.1.1.254", 700, "", "")
 	checkInspectNetwork(t, false, "default", "contiv7", "16.1.1.254", 700, 0)
 	//checkInspectGlobal(t, false, "5", "")
@@ -1157,7 +1196,7 @@ func TestDynamicGlobalVlanRange(t *testing.T) {
 	checkDeleteNetwork(t, false, "default", "contiv2")
 	checkDeleteNetwork(t, false, "default", "contiv1")
 
-	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge", "proxy")
 
 }
 
@@ -1176,7 +1215,7 @@ func TestDynamicGlobalVxlanRange(t *testing.T) {
 	verifyNetworkState(t, "default", "contiv3", "data", "vxlan", "12.1.1.1", "12.1.1.254", 24, 3, 2000, "", "", 0)
 
 	//Change global state
-	checkGlobalSet(t, false, "default", "1-4094", "1000-2500", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1000-2500", "bridge", "proxy")
 
 	//verify creation of network with active tag fails after change in global vlan range
 	checkCreateNetwork(t, true, "default", "contiv4", "", "vxlan", "13.1.1.1/24", "13.1.1.254", 1000, "", "")
@@ -1189,12 +1228,12 @@ func TestDynamicGlobalVxlanRange(t *testing.T) {
 	verifyNetworkState(t, "default", "contiv6", "data", "vxlan", "14.1.1.1", "14.1.1.254", 24, 4, 2200, "", "", 0)
 
 	//check global state change fails if there are active tags
-	checkGlobalSet(t, true, "default", "1-4094", "2000-10000", "bridge")
+	checkGlobalSet(t, true, "default", "1-4094", "2000-10000", "bridge", "proxy")
 	//check global state change fails if there are active tags
-	checkGlobalSet(t, true, "default", "1-4094", "1000-2000", "bridge")
+	checkGlobalSet(t, true, "default", "1-4094", "1000-2000", "bridge", "proxy")
 
 	//check global vlan range can be changed to bigger range
-	checkGlobalSet(t, false, "default", "1-4094", "1000-9000", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1000-9000", "bridge", "proxy")
 	checkCreateNetwork(t, false, "default", "contiv7", "", "vxlan", "15.1.1.1/24", "15.1.1.254", 3200, "", "")
 	verifyNetworkState(t, "default", "contiv7", "data", "vxlan", "15.1.1.1", "15.1.1.254", 24, 5, 3200, "", "", 0)
 
@@ -1210,34 +1249,59 @@ func TestDynamicGlobalVxlanRange(t *testing.T) {
 	checkDeleteNetwork(t, false, "default", "contiv2")
 	checkDeleteNetwork(t, false, "default", "contiv1")
 
-	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge", "proxy")
 
 }
 
 // TestGlobalSetting tests global REST api
 func TestGlobalSetting(t *testing.T) {
 	// try basic modification
-	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge", "proxy")
 	// set aci mode
-	checkGlobalSet(t, false, "aci", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "aci", "1-4094", "1-10000", "bridge", "flood")
 
 	// modify vlan/vxlan range
-	checkGlobalSet(t, false, "default", "1-1000", "1001-2000", "bridge")
+	checkGlobalSet(t, false, "default", "1-1000", "1001-2000", "bridge", "proxy")
 
 	// try invalid fabric mode
-	checkGlobalSet(t, true, "xyz", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, true, "xyz", "1-4094", "1-10000", "bridge", "proxy")
 
 	// try invalid vlan/vxlan range
-	checkGlobalSet(t, true, "default", "1-5000", "1-10000", "bridge")
-	checkGlobalSet(t, true, "default", "0-4094", "1-10000", "bridge")
-	checkGlobalSet(t, true, "default", "1", "1-10000", "bridge")
-	checkGlobalSet(t, true, "default", "1?2", "1-10000", "bridge")
-	checkGlobalSet(t, true, "default", "abcd", "1-10000", "bridge")
-	checkGlobalSet(t, true, "default", "1-4094", "1-100000", "bridge")
-	checkGlobalSet(t, true, "default", "1-4094", "1-20000", "bridge")
+	checkGlobalSet(t, true, "default", "1-5000", "1-10000", "bridge", "proxy")
+	checkGlobalSet(t, true, "default", "0-4094", "1-10000", "bridge", "proxy")
+	checkGlobalSet(t, true, "default", "1", "1-10000", "bridge", "proxy")
+	checkGlobalSet(t, true, "default", "1?2", "1-10000", "bridge", "proxy")
+	checkGlobalSet(t, true, "default", "abcd", "1-10000", "bridge", "proxy")
+	checkGlobalSet(t, true, "default", "1-4094", "1-100000", "bridge", "proxy")
+	checkGlobalSet(t, true, "default", "1-4094", "1-20000", "bridge", "proxy")
 
 	// reset back to default values
-	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge", "proxy")
+}
+
+// TestAciGwSetting tests AciGw object REST api
+func TestAciGwSetting(t *testing.T) {
+	// basic create and delete
+	checkAciGwSet(t, false, "yes", "yes", "topology/pod-1/paths-101/pathep-[eth1/14]", "", "testDom")
+	checkAciGwDelete(t, false, "aciGw")
+
+	checkAciGwSet(t, true, "yes", "yes", "pod-1/paths-101/pathep-[eth1/14]", "", "testDom")
+	checkAciGwSet(t, false, "yes", "no", "topology/pod-1/paths-101/pathep-[eth1/14]", "", "testDom")
+	checkAciGwSet(t, true, "yes", "no", "topology/pod-1/paths-101/pathep-[eth1/14],pod-1/paths-101/pathep-[eth1/15]", "", "testDom")
+	checkAciGwSet(t, false, "yes", "no", "topology/pod-1/paths-101/pathep-[eth1/14],topology/pod-1/paths-101/pathep-[eth1/15]", "", "testDom")
+	checkAciGwSet(t, true, "yes", "yes", "topology/pod-1/paths-101/pathep-[eth1/14],topology/pod-1/paths-101/pathep-[eth1/15]", "topology/tor-1/node-101", "testDom")
+	checkAciGwSet(t, false, "yes", "yes", "topology/pod-1/paths-101/pathep-[eth1/14],topology/pod-1/paths-101/pathep-[eth1/15]", "topology/pod-1/node-101", "testDom")
+
+	// create an app-profile and verify aci delete is rejected.
+	checkCreateNetwork(t, false, "default", "aci-net", "data", "vlan", "23.1.2.1/16", "23.1.2.254", 1, "", "")
+	checkCreateEpg(t, false, "default", "aci-net", "epg1", []string{}, []string{})
+	checkCreateAppProfile(t, false, "default", "app-prof-1", []string{"epg1"})
+	checkAciGwDelete(t, true, "aciGw")
+	// delete the app-prof
+	checkDeleteAppProfile(t, false, "default", "app-prof-1")
+	checkAciGwDelete(t, false, "aciGw")
+	checkDeleteEpg(t, false, "default", "", "epg1")
+	checkDeleteNetwork(t, false, "default", "aci-net")
 }
 
 // TestNetworkPktRanges tests pkt-tag ranges in network REST api
@@ -1268,14 +1332,14 @@ func TestNetworkPktRanges(t *testing.T) {
 	checkDeleteNetwork(t, false, "default", "contiv1")
 
 	// shrink ranges and try allocating
-	checkGlobalSet(t, false, "default", "100-1000", "1001-2000", "bridge")
+	checkGlobalSet(t, false, "default", "100-1000", "1001-2000", "bridge", "proxy")
 	checkCreateNetwork(t, true, "default", "contiv1", "data", "vlan", "10.1.1.1/24", "10.1.1.254", 1001, "", "")
 	checkCreateNetwork(t, true, "default", "contiv1", "data", "vlan", "10.1.1.1/24", "10.1.1.254", 99, "", "")
 	checkCreateNetwork(t, true, "default", "contiv2", "data", "vxlan", "10.1.2.1/24", "10.1.2.254", 2001, "", "")
 	checkCreateNetwork(t, true, "default", "contiv2", "data", "vxlan", "10.1.2.1/24", "10.1.2.254", 1000, "", "")
 
 	// reset back to default values
-	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge")
+	checkGlobalSet(t, false, "default", "1-4094", "1-10000", "bridge", "proxy")
 }
 
 // TestPolicyRules tests policy and rule REST objects
@@ -1922,11 +1986,11 @@ func verifyServiceCreate(t *testing.T, tenant, network, serviceName string, port
 	}
 
 	if serviceLbState.IPAddress == "" {
-		t.Fatalf("Service Created does not have an ip addres allocated")
+		t.Fatalf("Service Created does not have an ip address allocated")
 	}
 
 	if preferredIP != "" && serviceLbState.IPAddress != preferredIP {
-		t.Fatalf("Service Created does not have preferred ip addres allocated")
+		t.Fatalf("Service Created does not have preferred ip address allocated")
 	}
 
 }
@@ -1963,7 +2027,7 @@ func triggerProviderUpdate(t *testing.T, providerIP, network, containerID, endpo
 	endpointUpdReq.Event = event
 	endpointUpdReq.Labels = make(map[string]string)
 	endpointUpdReq.EndpointID = endpointID
-	endpointUpdReq.ContainerName = containerName
+	endpointUpdReq.EPCommonName = containerName
 
 	for _, v := range labels {
 		key := strings.Split(v, "=")[0]
@@ -2101,7 +2165,7 @@ func get(getAll bool, hook func(id string) ([]core.State, error)) func(http.Resp
 
 		if resp, err = json.Marshal(states); err != nil {
 			http.Error(w,
-				core.Errorf("marshalling json failed. Error: %s", err).Error(),
+				core.Errorf("marshaling json failed. Error: %s", err).Error(),
 				http.StatusInternalServerError)
 			return
 		}

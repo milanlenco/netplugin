@@ -80,6 +80,7 @@ func NewAPIController(router *mux.Router, objdbClient objdb.API, storeURL string
 	contivModel.RegisterExtContractsGroupCallbacks(ctrler)
 	contivModel.RegisterEndpointCallbacks(ctrler)
 	contivModel.RegisterNetprofileCallbacks(ctrler)
+	contivModel.RegisterAciGwCallbacks(ctrler)
 	// Register routes
 	contivModel.AddRoutes(router)
 
@@ -94,6 +95,7 @@ func NewAPIController(router *mux.Router, objdbClient objdb.API, storeURL string
 			Vlans:            "1-4094",
 			Vxlans:           "1-10000",
 			FwdMode:          "bridge",
+			ArpMode:          "proxy",
 		})
 		if err != nil {
 			log.Fatalf("Error creating global state. Err: %v", err)
@@ -173,6 +175,7 @@ func (ac *APIController) GlobalCreate(global *contivModel.Global) error {
 		VLANs:       global.Vlans,
 		VXLANs:      global.Vxlans,
 		FwdMode:     global.FwdMode,
+		ArpMode:     global.ArpMode,
 	}
 
 	// Create the object
@@ -222,6 +225,9 @@ func (ac *APIController) GlobalUpdate(global, params *contivModel.Global) error 
 		}
 		globalCfg.FwdMode = params.FwdMode
 	}
+	if global.ArpMode != params.ArpMode {
+		globalCfg.ArpMode = params.ArpMode
+	}
 	if global.Vlans != params.Vlans {
 		globalCfg.VLANs = params.Vlans
 	}
@@ -243,6 +249,7 @@ func (ac *APIController) GlobalUpdate(global, params *contivModel.Global) error 
 	global.Vlans = params.Vlans
 	global.Vxlans = params.Vxlans
 	global.FwdMode = params.FwdMode
+	global.ArpMode = params.ArpMode
 
 	return nil
 }
@@ -263,6 +270,56 @@ func (ac *APIController) GlobalDelete(global *contivModel.Global) error {
 		log.Errorf("Error deleting global config. Err: %v", err)
 		return err
 	}
+	return nil
+}
+
+// AciGwCreate creates aci state
+func (ac *APIController) AciGwCreate(aci *contivModel.AciGw) error {
+	log.Infof("Received AciGwCreate: %+v", aci)
+	// Fail the create if app profiles exist
+	profCount := contivModel.GetAppProfileCount()
+	if profCount != 0 {
+		log.Warnf("AciGwCreate: %d existing App-Profiles found.",
+			profCount)
+	}
+
+	return nil
+}
+
+// AciGwUpdate updates aci state
+func (ac *APIController) AciGwUpdate(aci, params *contivModel.AciGw) error {
+	log.Infof("Received AciGwUpdate: %+v", params)
+	// Fail the update if app profiles exist
+	profCount := contivModel.GetAppProfileCount()
+	if profCount != 0 {
+		log.Warnf("AciGwUpdate: %d existing App-Profiles found.",
+			profCount)
+	}
+
+	aci.EnforcePolicies = params.EnforcePolicies
+	aci.IncludeCommonTenant = params.IncludeCommonTenant
+	aci.NodeBindings = params.NodeBindings
+	aci.PathBindings = params.PathBindings
+	aci.PhysicalDomain = params.PhysicalDomain
+	return nil
+}
+
+// AciGwDelete deletes aci state
+func (ac *APIController) AciGwDelete(aci *contivModel.AciGw) error {
+	log.Infof("Received AciGwDelete")
+	// Fail the delete if app profiles exist
+	profCount := contivModel.GetAppProfileCount()
+	if profCount != 0 {
+		return core.Errorf("%d App-Profiles found. Delete them first",
+			profCount)
+	}
+
+	return nil
+}
+
+// AciGwGetOper provides operational info for the aci object
+func (ac *APIController) AciGwGetOper(op *contivModel.AciGwInspect) error {
+	op.Oper.NumAppProfiles = contivModel.GetAppProfileCount()
 	return nil
 }
 
@@ -414,7 +471,7 @@ func (ac *APIController) EndpointGetOper(endpoint *contivModel.EndpointInspect) 
 			ep := epCfg.(*mastercfg.CfgEndpointState)
 			if strings.Contains(ep.EndpointID, endpoint.Oper.Key) ||
 				strings.Contains(ep.ContainerID, endpoint.Oper.Key) ||
-				strings.Contains(ep.ContainerName, endpoint.Oper.Key) {
+				strings.Contains(ep.EPCommonName, endpoint.Oper.Key) {
 
 				endpoint.Oper.Network = ep.NetID
 				endpoint.Oper.EndpointID = ep.EndpointID
@@ -428,7 +485,7 @@ func (ac *APIController) EndpointGetOper(endpoint *contivModel.EndpointInspect) 
 				endpoint.Oper.VtepIP = ep.VtepIP
 				endpoint.Oper.Labels = fmt.Sprintf("%s", ep.Labels)
 				endpoint.Oper.ContainerID = ep.ContainerID
-				endpoint.Oper.ContainerName = ep.ContainerName
+				endpoint.Oper.ContainerName = ep.EPCommonName
 
 				return nil
 			}
@@ -852,7 +909,7 @@ func (ac *APIController) EndpointGroupGetOper(endpointGroup *contivModel.Endpoin
 				epOper.VtepIP = ep.VtepIP
 				epOper.Labels = fmt.Sprintf("%s", ep.Labels)
 				epOper.ContainerID = ep.ContainerID
-				epOper.ContainerName = ep.ContainerName
+				epOper.ContainerName = ep.EPCommonName
 				endpointGroup.Oper.Endpoints = append(endpointGroup.Oper.Endpoints, epOper)
 			}
 		}
@@ -1021,7 +1078,7 @@ func (ac *APIController) NetworkGetOper(network *contivModel.NetworkInspect) err
 				epOper.VtepIP = ep.VtepIP
 				epOper.Labels = fmt.Sprintf("%s", ep.Labels)
 				epOper.ContainerID = ep.ContainerID
-				epOper.ContainerName = ep.ContainerName
+				epOper.ContainerName = ep.EPCommonName
 				network.Oper.Endpoints = append(network.Oper.Endpoints, epOper)
 			}
 		}
@@ -1076,12 +1133,7 @@ func (ac *APIController) NetworkDelete(network *contivModel.Network) error {
 	}
 
 	// Save the tenant too since we removed the links
-	err = tenant.Write()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return tenant.Write()
 }
 
 // NetprofileCreate creates the network rule
@@ -1254,7 +1306,7 @@ func (ac *APIController) PolicyGetOper(policy *contivModel.PolicyInspect) error 
 					epOper.VtepIP = ep.VtepIP
 					epOper.Labels = fmt.Sprintf("%s", ep.Labels)
 					epOper.ContainerID = ep.ContainerID
-					epOper.ContainerName = ep.ContainerName
+					epOper.ContainerName = ep.EPCommonName
 					policy.Oper.Endpoints = append(policy.Oper.Endpoints, epOper)
 				}
 			}
@@ -1597,7 +1649,7 @@ func getTenantNetworks(tenant *contivModel.TenantInspect) error {
 						epOper.VtepIP = ep.VtepIP
 						epOper.Labels = fmt.Sprintf("%s", ep.Labels)
 						epOper.ContainerID = ep.ContainerID
-						epOper.ContainerName = ep.ContainerName
+						epOper.ContainerName = ep.EPCommonName
 						netOper.Endpoints = append(netOper.Endpoints, epOper)
 					}
 				}
@@ -1660,7 +1712,7 @@ func getTenantEPGs(tenant *contivModel.TenantInspect) error {
 						epOper.VtepIP = ep.VtepIP
 						epOper.Labels = fmt.Sprintf("%s", ep.Labels)
 						epOper.ContainerID = ep.ContainerID
-						epOper.ContainerName = ep.ContainerName
+						epOper.ContainerName = ep.EPCommonName
 						epgOper.Endpoints = append(epgOper.Endpoints, epOper)
 					}
 				}
@@ -1865,9 +1917,15 @@ func (ac *APIController) BgpGetOper(bgp *contivModel.BgpInspect) error {
 
 	switch {
 	case r.StatusCode == int(404):
+<<<<<<< HEAD
 		return errors.New("Page not found")
 	case r.StatusCode == int(403):
 		return errors.New("Access denied")
+=======
+		return errors.New("page not found")
+	case r.StatusCode == int(403):
+		return errors.New("access denied")
+>>>>>>> a1ee32b98e197afb0900dc2ba0dc04902c1c4a8a
 	case r.StatusCode == int(500):
 		response, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -2081,7 +2139,7 @@ func (ac *APIController) ServiceLBGetOper(serviceLB *contivModel.ServiceLBInspec
 		epOper.VtepIP = epCfg.VtepIP
 		epOper.Labels = fmt.Sprintf("%s", epCfg.Labels)
 		epOper.ContainerID = epCfg.ContainerID
-		epOper.ContainerName = epCfg.ContainerName
+		epOper.ContainerName = epCfg.EPCommonName
 		serviceLB.Oper.Providers = append(serviceLB.Oper.Providers, epOper)
 		count++
 		epCfg = nil
@@ -2092,10 +2150,7 @@ func (ac *APIController) ServiceLBGetOper(serviceLB *contivModel.ServiceLBInspec
 }
 
 func validateSelectors(selector string) bool {
-	if strings.Count(selector, "=") == 1 {
-		return true
-	}
-	return false
+	return strings.Count(selector, "=") == 1
 }
 
 func validatePorts(ports []string) bool {

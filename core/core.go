@@ -21,7 +21,7 @@ limitations under the License.
 // hardware/kernel/device specific programming implementation, if any.
 package core
 
-// Address is a string represenation of a network address (mac, ip, dns-name, url etc)
+// Address is a string representation of a network address (mac, ip, dns-name, url etc)
 type Address struct {
 	addr string
 }
@@ -79,9 +79,10 @@ type InstanceInfo struct {
 	HostLabel   string      `json:"host-label"`
 	CtrlIP      string      `json:"ctrl-ip"`
 	VtepIP      string      `json:"vtep-ip"`
-	VlanIntf    string      `json:"vlan-if"`
+	UplinkIntf  []string    `json:"uplink-if"`
 	RouterIP    string      `json:"router-ip"`
 	FwdMode     string      `json:"fwd-mode"`
+	ArpMode     string      `json:"arp-mode"`
 	DbURL       string      `json:"db-url"`
 	PluginMode  string      `json:"plugin-mode"`
 }
@@ -134,6 +135,9 @@ type NetworkDriver interface {
 	InspectState() ([]byte, error)
 	// return bgp in json form
 	InspectBgp() ([]byte, error)
+	// Set global config
+	GlobalConfigUpdate(inst InstanceInfo) error
+	InspectNameserver() ([]byte, error)
 }
 
 // WatchState is used to provide a difference between core.State structs by

@@ -67,18 +67,14 @@ func parseOpts(opts *cliOpts) error {
 		"{docker, kubernetes}")
 	flagSet.BoolVar(&opts.dnsEnabled,
 		"dns-enable",
-		true,
+		false,
 		"Turn on DNS {true, false}")
 	flagSet.BoolVar(&opts.version,
 		"version",
 		false,
 		"prints current version")
 
-	if err := flagSet.Parse(os.Args[1:]); err != nil {
-		return err
-	}
-
-	return nil
+	return flagSet.Parse(os.Args[1:])
 }
 
 func execOpts(opts *cliOpts) {

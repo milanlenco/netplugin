@@ -1086,7 +1086,7 @@ func (s *systemtestSuite) SetUpSuiteBaremetal(c *C) {
 
 	logrus.Infof("Private keyFile = %s", s.basicInfo.KeyFile)
 	logrus.Infof("Binary binpath = %s", s.basicInfo.BinPath)
-	logrus.Infof("Interface vlanIf = %s", s.hostInfo.HostDataInterface)
+	logrus.Infof("Uplink data Interface(s) = %s", s.hostInfo.HostDataInterfaces)
 
 	s.baremetal = remotessh.Baremetal{}
 	bm := &s.baremetal
@@ -1160,6 +1160,7 @@ func (s *systemtestSuite) SetUpSuiteVagrant(c *C) {
 	nodesStr := os.Getenv("CONTIV_NODES")
 	var contivNodes int
 
+	logrus.Infof("Running tests with Forwarding mode: %s", s.fwdMode)
 	if nodesStr == "" {
 		contivNodes = 3
 	} else {
@@ -1293,6 +1294,7 @@ func (s *systemtestSuite) SetUpTestBaremetal(c *C) {
 			NetworkInfraType: "default",
 			Vlans:            "1-4094",
 			Vxlans:           "1-10000",
+			ArpMode:          "proxy",
 		}), IsNil)
 		time.Sleep(40 * time.Second)
 	}
@@ -1338,15 +1340,15 @@ func (s *systemtestSuite) SetUpTestVagrant(c *C) {
 
 	time.Sleep(5 * time.Second)
 	if s.basicInfo.Scheduler != "k8" {
-		for i := 0; i < 11; i++ {
+		for i := 0; i < 21; i++ {
 
 			_, err := s.cli.TenantGet("default")
 			if err == nil {
 				break
 			}
 			// Fail if we reached last iteration
-			c.Assert((i < 10), Equals, true)
-			time.Sleep(500 * time.Millisecond)
+			c.Assert((i < 20), Equals, true)
+			time.Sleep(1 * time.Second)
 		}
 	}
 
@@ -1356,6 +1358,7 @@ func (s *systemtestSuite) SetUpTestVagrant(c *C) {
 			NetworkInfraType: "default",
 			Vlans:            "1-4094",
 			Vxlans:           "1-10000",
+			ArpMode:          "proxy",
 		}), IsNil)
 		time.Sleep(120 * time.Second)
 	}

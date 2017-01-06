@@ -3,8 +3,20 @@
 
 require 'fileutils'
 
+BEGIN {
+  STATEFILE = ".vagrant-state"
+
+  if File.exist?(STATEFILE)
+    File.open(STATEFILE).read.lines.map { |x| x.split("=", 2) }.each { |x,y| ENV[x] = y }
+  end
+}
+
 # netplugin_synced_gopath="/opt/golang"
+go_version = ENV["GO_VERSION"] || "1.7.4"
+docker_version = ENV["CONTIV_DOCKER_VERSION"] || "1.12.3"
 gopath_folder="/opt/gopath"
+http_proxy = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ''
+https_proxy = ENV['HTTPS_PROXY'] || ENV['https_proxy'] || ''
 
 cluster_ip_nodes = ""
 
@@ -26,6 +38,10 @@ echo "export CLUSTER_NODE_IPS=$3" >> /etc/profile.d/envvar.sh
 echo "export CONTIV_CLUSTER_STORE=$7" >> /etc/profile.d/envvar.sh
 source /etc/profile.d/envvar.sh
 
+rm -rf /usr/local/go
+
+curl -sSL https://storage.googleapis.com/golang/go#{go_version}.linux-amd64.tar.gz  | sudo tar -xz -C /usr/local
+
 if [[ $# -gt 9 ]] && [[ $10 != "" ]]; then
     shift; shift; shift; shift; shift; shift; shift; shift; shift
     echo "export $@" >> /etc/profile.d/envvar.sh
@@ -35,32 +51,34 @@ fi
 chown -R vagrant #{gopath_folder}
 
 # Install specific docker version if required
-if [[ $8 != "" ]]; then
-    echo "Installing docker version " $8
-    if [[ $9 == "ubuntu" ]]; then
-        curl https://get.docker.com | sed s/docker-engine/docker-engine=$8-0~vivid/ | bash
-    else
-        # cleanup openstack-kilo repo if required
-        yum-config-manager --disable openstack-kilo
-        curl https://get.docker.com | sed s/docker-engine/docker-engine-$8/ | bash
-    fi
+echo "Cleaning docker up to reinstall"
+service docker stop || :
+rm -rf /var/lib/docker
+echo "Installing docker version " $8
+if [[ $9 == "ubuntu" ]]; then
+    sudo apt-get purge docker-engine -y || :
+    curl https://get.docker.com | sed s/docker-engine/docker-engine=#{docker_version}-0~xenial/g | bash
+else
+    # cleanup openstack-kilo repo if required
+    yum remove docker-engine -y || :
+    yum-config-manager --disable openstack-kilo
+    curl https://get.docker.com | sed s/docker-engine/docker-engine-#{docker_version}/ | bash
 fi
+
 # setup docker cluster store
 if [[ $7 == *"consul:"* ]]
 then
-    cp #{gopath_folder}/src/github.com/contiv/netplugin/scripts/docker.service.consul /lib/systemd/system/docker.service
+    perl -i -lpe 's!^ExecStart(.+)$!ExecStart$1 --cluster-store=consul://localhost:8500!' /lib/systemd/system/docker.service
 else
-    cp #{gopath_folder}/src/github.com/contiv/netplugin/scripts/docker.service /lib/systemd/system/docker.service
+    perl -i -lpe 's!^ExecStart(.+)$!ExecStart$1 --cluster-store=etcd://localhost:2379!' /lib/systemd/system/docker.service
 fi
+
 # setup docker remote api
-cp #{gopath_folder}/src/github.com/contiv/netplugin/scripts/docker-tcp.socket /etc/systemd/system/docker-tcp.socket
-systemctl enable docker-tcp.socket
 mkdir /etc/systemd/system/docker.service.d
 echo "[Service]" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
 echo "Environment=\\\"no_proxy=$CLUSTER_NODE_IPS,127.0.0.1,localhost,netmaster\\\" \\\"http_proxy=$http_proxy\\\" \\\"https_proxy=$https_proxy\\\"" | sudo tee -a /etc/systemd/system/docker.service.d/http-proxy.conf
 sudo systemctl daemon-reload
 sudo systemctl stop docker
-systemctl start docker-tcp.socket
 sudo systemctl start docker
 
 # remove duplicate docker key
@@ -76,6 +94,7 @@ provision_common_always = <<SCRIPT
 /sbin/ip addr add "$2/24" dev eth1
 /sbin/ip link set eth1 up
 /sbin/ip link set eth2 up
+/sbin/ip link set eth3 up
 
 # Drop cache to workaround vboxsf problem
 echo 3 > /proc/sys/vm/drop_caches
@@ -102,9 +121,48 @@ echo "export https_proxy='$2'" >> /etc/profile.d/envvar.sh
 source /etc/profile.d/envvar.sh
 SCRIPT
 
+module VagrantPlugins
+  module EnvState
+    class Plugin < Vagrant.plugin('2')
+      name 'EnvState'
+
+      description <<-DESC
+      Environment State tracker; saves the environment at `vagrant up` time and
+      restores it for all other commands, and removes it at `vagrant destroy`
+      time.
+      DESC
+
+      def self.up_hook(arg)
+        unless File.exist?(STATEFILE) # prevent it from writing more than once.
+          f = File.open(STATEFILE, "w") 
+          ENV.each do |x,y|
+            f.puts "%s=%s" % [x,y]
+          end
+          f.close
+        end
+      end
+
+      def self.destroy_hook(arg)
+        if File.exist?(STATEFILE) # prevent it from trying to delete more than once.
+          File.unlink(STATEFILE)
+        end
+      end
+
+      action_hook(:EnvState, :machine_action_up) do |hook|
+        hook.prepend(method(:up_hook))
+      end
+
+      action_hook(:EnvState, :machine_action_destroy) do |hook|
+        hook.prepend(method(:destroy_hook))
+      end
+    end
+  end
+end
+
 
 VAGRANTFILE_API_VERSION = "2"
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.vm.box_check_update = false
     if ENV['CONTIV_NODE_OS'] && ENV['CONTIV_NODE_OS'] == "ubuntu" then
         config.vm.box = "contiv/ubuntu1604-netplugin"
         config.vm.box_version = "0.7.0"
@@ -147,7 +205,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                          virtualbox__intnet: "contiv_blue"
         quagga1.vm.provision "shell" do |s|
           s.inline = provision_bird
-          s.args = [ENV["http_proxy"] || "", ENV["https_proxy"] || ""]
+          s.args = [http_proxy, https_proxy]
         end
       end
       config.vm.define "quagga2" do |quagga2|
@@ -168,7 +226,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         quagga2.vm.provision "shell" do |s|
           s.inline = provision_bird
-          s.args = [ENV["http_proxy"] || "", ENV["https_proxy"] || ""]
+          s.args = [http_proxy, https_proxy]
         end
       end
     end
@@ -200,12 +258,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # create an interface for etcd cluster
             node.vm.network :private_network, ip: node_addr, virtualbox__intnet: "true", auto_config: false
             # create an interface for bridged network
-            if ENV['CONTIV_L3'] then
-              # create an interface for bridged network
-              node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: network_name, auto_config: false
-            else
-              node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: "true", auto_config: false
-            end
+            node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: network_name, auto_config: false
+            node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: "contiv_purple", auto_config: false
             node.vm.provider "virtualbox" do |v|
                 # make all nics 'virtio' to take benefit of builtin vlan tag
                 # support, which otherwise needs to be enabled in Intel drivers,
@@ -213,8 +267,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 v.customize ['modifyvm', :id, '--nictype1', 'virtio']
                 v.customize ['modifyvm', :id, '--nictype2', 'virtio']
                 v.customize ['modifyvm', :id, '--nictype3', 'virtio']
+                v.customize ['modifyvm', :id, '--nictype4', 'virtio']
                 v.customize ['modifyvm', :id, '--nicpromisc2', 'allow-all']
                 v.customize ['modifyvm', :id, '--nicpromisc3', 'allow-all']
+                v.customize ['modifyvm', :id, '--nicpromisc4', 'allow-all']
                 v.customize ['modifyvm', :id, '--paravirtprovider', "kvm"]
             end
 
@@ -227,11 +283,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             end
 
             node.vm.provision "shell" do |s|
-                s.inline = "echo '#{node_ips[0]} netmaster' >> /etc/hosts; echo '#{node_ips[1]} netmaster' >> /etc/hosts;	echo '#{node_addr} #{node_name}' >> /etc/hosts"
+                s.inline = "echo '#{node_ips[0]} netmaster' >> /etc/hosts; echo '#{node_ips[1]} netmaster' >> /etc/hosts;   echo '#{node_addr} #{node_name}' >> /etc/hosts"
             end
             node.vm.provision "shell" do |s|
                 s.inline = provision_common_once
-                s.args = [node_name, node_addr, cluster_ip_nodes, ENV["http_proxy"] || "", ENV["https_proxy"] || "", ENV["USE_RELEASE"] || "", ENV["CONTIV_CLUSTER_STORE"] || "etcd://localhost:2379", ENV["CONTIV_DOCKER_VERSION"] || "", ENV['CONTIV_NODE_OS'] || "", *ENV['CONTIV_ENV']]
+                s.args = [
+                  node_name,
+                  node_addr,
+                  cluster_ip_nodes,
+                  http_proxy,
+                  https_proxy,
+                  ENV["USE_RELEASE"] || "",
+                  ENV["CONTIV_CLUSTER_STORE"] || "etcd://localhost:2379",
+                  ENV["CONTIV_DOCKER_VERSION"] || docker_version,
+                  ENV['CONTIV_NODE_OS'] || "",
+                  *ENV['CONTIV_ENV'],
+                ]
             end
             node.vm.provision "shell", run: "always" do |s|
                 s.inline = provision_common_always

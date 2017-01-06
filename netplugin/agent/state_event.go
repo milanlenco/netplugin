@@ -227,6 +227,9 @@ func processEpgEvent(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, ID str
 
 func processGlobalFwdModeUpdEvent(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, fwdMode string) {
 
+	netPlugin.Lock()
+	defer func() { netPlugin.Unlock() }()
+
 	// parse store URL
 	parts := strings.Split(opts.DbURL, "://")
 	if len(parts) < 2 {
@@ -240,6 +243,10 @@ func processGlobalFwdModeUpdEvent(netPlugin *plugin.NetPlugin, opts core.Instanc
 			State:   stateStore,
 		},
 		Instance: opts,
+	}
+	if len(pluginConfig.Instance.UplinkIntf) > 1 && fwdMode == "routing" {
+		pluginConfig.Instance.UplinkIntf = []string{pluginConfig.Instance.UplinkIntf[0]}
+		log.Warnf("Routing mode supports only one uplink interface. Using %s as uplink interface", pluginConfig.Instance.UplinkIntf[0])
 	}
 	pluginConfig.Instance.FwdMode = fwdMode
 	netPlugin.GlobalFwdModeUpdate(pluginConfig)
@@ -261,6 +268,31 @@ func processGlobalFwdModeUpdEvent(netPlugin *plugin.NetPlugin, opts core.Instanc
 		}
 	}
 
+}
+
+func processGlobalConfigUpdEvent(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, cfg *mastercfg.GlobConfig) {
+
+	netPlugin.Lock()
+	defer func() { netPlugin.Unlock() }()
+
+	// parse store URL
+	parts := strings.Split(opts.DbURL, "://")
+	if len(parts) < 2 {
+		log.Fatalf("Invalid cluster-store-url %s", opts.DbURL)
+	}
+	stateStore := parts[0]
+	// initialize the config
+	pluginConfig := plugin.Config{
+		Drivers: plugin.Drivers{
+			Network: "ovs",
+			State:   stateStore,
+		},
+		Instance: opts,
+	}
+	pluginConfig.Instance.ArpMode = cfg.ArpMode
+	netPlugin.GlobalConfigUpdate(pluginConfig)
+
+	log.Infof("Global Config updated")
 }
 
 //processServiceLBEvent processes service load balancer object events
@@ -360,9 +392,19 @@ func processStateEvent(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, rsps
 			}
 
 			if gCfg, ok := currentState.(*mastercfg.GlobConfig); ok {
-				log.Infof("Received %q for global config current state - %s , prev state - %s ", eventStr, gCfg.FwdMode, rsp.Prev.(*mastercfg.GlobConfig).FwdMode)
+				log.Infof("Received %q for global config current state - %s,%s , prev state - %s,%s ", eventStr,
+					gCfg.FwdMode, gCfg.ArpMode, rsp.Prev.(*mastercfg.GlobConfig).FwdMode, rsp.Prev.(*mastercfg.GlobConfig).ArpMode)
+
+				// if its a forwarding mode change, the network driver needs to be restarted
 				if gCfg.FwdMode != rsp.Prev.(*mastercfg.GlobConfig).FwdMode {
 					processGlobalFwdModeUpdEvent(netPlugin, opts, gCfg.FwdMode)
+				} else {
+					// if its any other global config change, dynamically process the change
+					if gCfg.ArpMode != rsp.Prev.(*mastercfg.GlobConfig).ArpMode &&
+						gCfg.FwdMode == "routing" && gCfg.ArpMode == "flood" {
+						log.Infof("Global ARP mode config is not effective when forwarding mode is routing. Proxy-arp will be enabled.")
+					}
+					processGlobalConfigUpdEvent(netPlugin, opts, gCfg)
 				}
 			}
 
@@ -416,7 +458,7 @@ func handleNetworkEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, re
 	cfg := mastercfg.CfgNetworkState{}
 	cfg.StateDriver = netPlugin.StateDriver
 	retErr <- cfg.WatchAll(rsps)
-	return
+	log.Errorf("Error from handleNetworkEvents")
 }
 
 func handleBgpEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvErr chan error) {
@@ -426,7 +468,7 @@ func handleBgpEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvEr
 	cfg := mastercfg.CfgBgpState{}
 	cfg.StateDriver = netPlugin.StateDriver
 	recvErr <- cfg.WatchAll(rsps)
-	return
+	log.Errorf("Error from handleBgpEvents")
 }
 
 func handleEpgEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvErr chan error) {
@@ -436,7 +478,7 @@ func handleEpgEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvEr
 	cfg := mastercfg.EndpointGroupState{}
 	cfg.StateDriver = netPlugin.StateDriver
 	recvErr <- cfg.WatchAll(rsps)
-	return
+	log.Errorf("Error from handleEpgEvents")
 }
 
 func handleServiceLBEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvErr chan error) {
@@ -446,7 +488,7 @@ func handleServiceLBEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, 
 	cfg := mastercfg.CfgServiceLBState{}
 	cfg.StateDriver = netPlugin.StateDriver
 	recvErr <- cfg.WatchAll(rsps)
-	return
+	log.Errorf("Error from handleLBEvents")
 }
 
 func handleSvcProviderUpdEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvErr chan error) {
@@ -455,7 +497,7 @@ func handleSvcProviderUpdEvents(netPlugin *plugin.NetPlugin, opts core.InstanceI
 	cfg := mastercfg.SvcProvider{}
 	cfg.StateDriver = netPlugin.StateDriver
 	recvErr <- cfg.WatchAll(rsps)
-	return
+	log.Errorf("Error from handleSvcProviderUpdEvents")
 }
 
 func handleGlobalCfgEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, recvErr chan error) {
@@ -465,5 +507,5 @@ func handleGlobalCfgEvents(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, 
 	cfg := mastercfg.GlobConfig{}
 	cfg.StateDriver = netPlugin.StateDriver
 	recvErr <- cfg.WatchAll(rsps)
-	return
+	log.Errorf("Error from handleGlobalCfgEvents")
 }

@@ -161,15 +161,9 @@ func (c *APIClient) fetchPodLabels(ns, name string) error {
 	defer r.Body.Close()
 	switch {
 	case r.StatusCode == int(404):
-<<<<<<< HEAD
 		return fmt.Errorf("Page not found")
 	case r.StatusCode == int(403):
-		return fmt.Errorf("Access denied")
-=======
-		return fmt.Errorf("page not found")
-	case r.StatusCode == int(403):
 		return fmt.Errorf("access denied")
->>>>>>> a1ee32b98e197afb0900dc2ba0dc04902c1c4a8a
 	case r.StatusCode != int(200):
 		log.Errorf("GET Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return fmt.Errorf("%s", r.Status)

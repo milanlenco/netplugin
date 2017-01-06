@@ -30,13 +30,8 @@ func AddBgp(stateDriver core.StateDriver, bgpCfg *intent.ConfigBgp) error {
 	log.Infof("Adding bgp neighbor {%v}", bgpCfg)
 	aci, _ := IsAciConfigured()
 	if aci {
-<<<<<<< HEAD
 		log.Errorf("Invalid configuration. Not supported in ACI fabric mode")
 		return errors.New("Not supported in ACI fabric mode")
-=======
-		log.Errorf("Invalid configuration. Not supported in ACI fabric mode.")
-		return errors.New("not supported in ACI fabric mode")
->>>>>>> a1ee32b98e197afb0900dc2ba0dc04902c1c4a8a
 	}
 	bgpState := &mastercfg.CfgBgpState{}
 	bgpState.Hostname = bgpCfg.Hostname

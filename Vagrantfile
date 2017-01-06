@@ -84,11 +84,14 @@ echo 3 > /proc/sys/vm/drop_caches
 systemctl start docker
 
 # Start OVS if required
-systemctl start openvswitch
+# What do you mean IF required? Where is the flag to turn this on and off ?? So IF required means YES ABSOLUTELY REQUIRED.
+#systemctl start openvswitch
 
 # Enable ovs mgmt port
-(ovs-vsctl set-manager tcp:127.0.0.1:6640 && \
- ovs-vsctl set-manager ptcp:6640) || exit 1
+
+# IF required ?
+#(ovs-vsctl set-manager tcp:127.0.0.1:6640 && \
+# ovs-vsctl set-manager ptcp:6640) || exit 1
 SCRIPT
 
 provision_bird = <<SCRIPT

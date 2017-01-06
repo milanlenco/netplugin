@@ -74,7 +74,7 @@ void l2_patch_add_del (client_main_t *tm, int is_add);
 void get_vpp_summary_stats(client_main_t *cm);
 void add_l2_bridge (int bd_id, client_main_t *cm);
 void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm);
-// brecode - void set_mpls_route_add_del (***, client_main_t *cm) - add parameters
+// void set_mpls_route_add_del (client_main_t *cm, int enable_disable)
 void add_af_packet_interface (char *intf, client_main_t *cm);
 void add_del_interface_address (int enable_disable, int *sw_if_index, u32 *ipaddr, u8 *length, client_main_t *cm);
 void stats_enable_disable (int enable, client_main_t *cm);
@@ -85,7 +85,7 @@ int disconnect_from_vpp(void);
 /* Callbacks to GO functions - must have //export Gocallback_ above GO func declation */
 extern void gocallback_l2_bridge_reply (int *retval);
 extern void gocallback_l2_bridge_set_interface_reply (int *retval);
-// brecode - extern void gocallback_mpls_route_add_del_reply (int *retval);
+// extern void gocallback_mpls_route_add_del_reply (int *retval);
 extern void gocallback_af_packet_create_reply (int *retval, int *sw_if_index);
 extern void gocallback_add_del_address_reply ();
 extern void gocallback_set_interface_flags (int *retval);

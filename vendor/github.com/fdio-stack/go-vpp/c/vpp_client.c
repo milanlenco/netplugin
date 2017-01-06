@@ -429,16 +429,16 @@ static void vl_api_sw_interface_set_l2_bridge_reply_t_handler (
     gocallback_l2_bridge_set_interface_reply(retval);
 }
 
-static void vl_api_mpls_route_add_del_reply_t_handler (
-  vl_api_mpls_route_add_del_reply_t *mp)
-{
-    int * retval;
-    retval = malloc(sizeof(int));
-    *retval = ntohl(mp->retval);
+// static void vl_api_mpls_route_add_del_reply_t_handler (
+//   vl_api_mpls_route_add_del_reply_t *mp)
+// {
+//     int * retval;
+//     retval = malloc(sizeof(int));
+//     *retval = ntohl(mp->retval);
 
-    fformat (stdout, "mpls_route_add_del reply %d\n", ntohl(mp->retval));
-    gocallback_mpls_route_add_del_reply(retval);
-}
+//     fformat (stdout, "mpls_route_add_del reply %d\n", ntohl(mp->retval));
+//     gocallback_mpls_route_add_del_reply(retval);
+// }
 
 static void vl_api_bridge_domain_add_del_reply_t_handler (
   vl_api_bridge_domain_add_del_reply_t *mp)
@@ -499,8 +499,7 @@ static void noop_handler (void *notused) { }
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
-_(MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)                   \
-_(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
+// _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)                                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
@@ -595,8 +594,8 @@ void add_del_ip4_route (client_main_t *tm, int enable_disable)
     mp->table_id = ntohl(0);
     mp->create_vrf_if_needed = 1;
     /* Arp, please, if needed */
-    mp->resolve_if_needed = 1;
-    mp->resolve_attempts = ntohl(10);
+    // mp->resolve_if_needed = 1;
+    // mp->resolve_attempts = ntohl(10);
 
     mp->next_hop_sw_if_index = ntohl(5);
     mp->is_add = enable_disable;
@@ -866,39 +865,38 @@ void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm)
     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
 
-/* BRECODE - Find defautl values
-void set_mpls_route_add_del (***, client_main_t *cm)
-{
-    vl_api_mpls_route_add_del_t *mp;
+// void set_mpls_route_add_del (client_main_t *cm, int enable_disable)
+// {
+//     vl_api_mpls_route_add_del_t *mp;
 
-    mp = vl_msg_api_alloc (sizeof (*mp));
-    memset(mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_MPLS_ROUTE_ADD_DEL);
-    mp->client_index = cm->my_client_index;
-    mp->context = 0xdeadbeef;
+//     mp = vl_msg_api_alloc (sizeof (*mp));
+//     memset(mp, 0, sizeof (*mp));
+//     mp->_vl_msg_id = ntohs (VL_API_MPLS_ROUTE_ADD_DEL);
+//     mp->client_index = cm->my_client_index;
+//     mp->context = 0xdeadbeef;
 
-    mp->mr_eos
-    mp->mr_table_id
-    mp->mr_classify_table_index
-    mp->mr_create_table_if_needed
-    mp->mr_is_add
-    mp->mr_is_classify
-    mp->mr_is_multipath
-    mp->mr_is_resolve_host
-    mp->mr_is_resolve_attached
-    mp->mr_next_hop_proto_is_ip4
-    mp->mr_next_hop_weight
-    mp->mr_next_hop[16]
-    mp->mr_next_hop_n_out_labels
-    mp->mr_next_hop_sw_if_index
-    mp->mr_next_hop_table_id
-    mp->mr_next_hop_via_label
-    mp->mr_next_hop_out_label_stack[mr_next_hop_n_out_labels]
+//     //mp->mr_eos
+//     mp->mr_table_id = ntohl(0);
+//     //mp->mr_classify_table_index
+//     mp->mr_create_table_if_needed = 1;
+//     mp->mr_is_add = enable_disable;
+//     // mp->mr_is_classify
+//     // mp->mr_is_multipath
+//     // mp->mr_is_resolve_host
+//     // mp->mr_is_resolve_attached
+//     // mp->mr_next_hop_proto_is_ip4
+//     mp->mr_next_hop_weight = 1; 
+//     // mp->mr_next_hop[16]
+//     // mp->mr_next_hop_n_out_labels
+//     mp->mr_next_hop_sw_if_index = ntohl(5);
+//     // mp->mr_next_hop_table_id
+//     // mp->mr_next_hop_via_label
+//     // mp->mr_next_hop_out_label_stack[mr_next_hop_n_out_labels]
 
-    //    fformat(stdout,"c: sending set_mpls_route_add_del req. to vpp\n");
-    vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
-}
-*/
+//     //    fformat(stdout,"c: sending set_mpls_route_add_del req. to vpp\n");
+//     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
+// }
+
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;

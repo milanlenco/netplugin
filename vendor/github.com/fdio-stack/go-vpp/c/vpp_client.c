@@ -23,13 +23,13 @@
 #define f64_print(a,b)
 
 #define vl_endianfun             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
 /*
@@ -900,7 +900,7 @@ void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm)
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp/api/vpe.api.h>
+#include <vpp-api/vpe.api.h>
 #undef vl_api_version
 
 void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp) 

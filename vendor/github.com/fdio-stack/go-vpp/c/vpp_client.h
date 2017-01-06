@@ -30,13 +30,13 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include <vpp/api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
 
 #define vl_typedefs             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 typedef struct {

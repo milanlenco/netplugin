@@ -502,7 +502,7 @@ static void noop_handler (void *notused) { }
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
-// _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
+_(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)                                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
@@ -844,7 +844,7 @@ void add_l2_bridge (int bd_id, client_main_t *cm)
     mp->arp_term = 0 ;
     mp->is_add = 1;
 
-    //    fformat(stdout,"c: sending add_l2_bridge req. to vpp\n");
+    fformat(stdout,"c: sending add_l2_bridge req. to vpp\n");
     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
 

@@ -185,7 +185,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 func (d *VppDriver) addVppIntf(id string, intfName string) error {
 
 	// Get VPP name
-	vppIntfName, err := d.getVppIntName(intfName)
+	vppIntfName, err := d.getVppIntfName(intfName)
 	if err != nil {
 		log.Infof("Error generating Vpp veth pair name. Err: %v", err)
 		return err
@@ -306,6 +306,16 @@ func (d *VppDriver) InspectBgp() ([]byte, error) {
 	return nil, core.Errorf("Not implemented")
 }
 
+// GlobalConfigUpdate is not implemented
+func (d *VppDriver) GlobalConfigUpdate(inst core.InstanceInfo) error {
+	return core.Errorf("Not implemented")
+}
+
+// InspectNameserver returns nameserver state as json string
+func (d *VppDriver) InspectNameserver() ([]byte, error) {
+	return []byte{}, core.Errorf("Not implemented")
+}
+
 func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, error) {
 	//Create a random interface name using Endpoint ID
 	vethPrefix := "veth"
@@ -315,7 +325,7 @@ func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, erro
 
 }
 
-func (d *VppDriver) getVppIntName(intfName string) (string, error) {
+func (d *VppDriver) getVppIntfName(intfName string) (string, error) {
 	// Same interface format for vpp veth pair without the prefix
 	vppIntfName := intfName[4:]
 	return vppIntfName, nil

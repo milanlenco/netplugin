@@ -30,6 +30,7 @@
 #define vl_print(handle, ...)
 #define vl_printfun
 #include <vpp-api/vpe_all_api_h.h>
+#include </usr/include/vpp-api/acl_all_api_h.h>
 #undef vl_printfun
 
 /*
@@ -868,37 +869,77 @@ void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm)
     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
 
-// void set_mpls_route_add_del (client_main_t *cm, int enable_disable)
-// {
-//     vl_api_mpls_route_add_del_t *mp;
+void dump_acl (int acl_indx, client_main_t *cm)
+{
+    vl_api_acl_dump_t *mp;
 
-//     mp = vl_msg_api_alloc (sizeof (*mp));
-//     memset(mp, 0, sizeof (*mp));
-//     mp->_vl_msg_id = ntohs (VL_API_MPLS_ROUTE_ADD_DEL);
-//     mp->client_index = cm->my_client_index;
-//     mp->context = 0xdeadbeef;
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset(mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_ACL_DUMP);
+    mp->client_index = cm->my_client_index;
+    mp->context = 0xdeadbeef;
 
-//     //mp->mr_eos
-//     mp->mr_table_id = ntohl(0);
-//     //mp->mr_classify_table_index
-//     mp->mr_create_table_if_needed = 1;
-//     mp->mr_is_add = enable_disable;
-//     // mp->mr_is_classify
-//     // mp->mr_is_multipath
-//     // mp->mr_is_resolve_host
-//     // mp->mr_is_resolve_attached
-//     // mp->mr_next_hop_proto_is_ip4
-//     mp->mr_next_hop_weight = 1; 
-//     // mp->mr_next_hop[16]
-//     // mp->mr_next_hop_n_out_labels
-//     mp->mr_next_hop_sw_if_index = ntohl(5);
-//     // mp->mr_next_hop_table_id
-//     // mp->mr_next_hop_via_label
-//     // mp->mr_next_hop_out_label_stack[mr_next_hop_n_out_labels]
+    mp->acl_index = acl_indx;
 
-//     //    fformat(stdout,"c: sending set_mpls_route_add_del req. to vpp\n");
-//     vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
-// }
+    //    fformat(stdout,"c: sending add_l2_bridge_interface req. to vpp\n");
+    vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
+}
+
+void acl_add_replace (int acl_indx, client_main_t *cm)
+{
+    vl_api_acl_dump_t *mp;
+    u32 count;
+    u8 tag[64];
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset(mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_ACL_DUMP);
+    mp->client_index = cm->my_client_index;
+    mp->context = 0xdeadbeef;
+
+    mp->acl_index = ntohl(acl_indx);
+
+
+    //    fformat(stdout,"c: sending add_l2_bridge_interface req. to vpp\n");
+    vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
+}
+
+static void vl_api_acl_add_replace_reply_t_handler (
+  vl_api_acl_add_replace_reply_t *mp)
+{
+    int * retval;
+    retval = malloc(sizeof(int));
+    *retval = ntohl(mp->retval);
+
+    fformat (stdout, "l2_bridge reply %d\n", ntohl(mp->retval));
+    gocallback_acl_add_replace_reply(retval);
+}
+
+void acl_del (int acl_indx, client_main_t *cm)
+{
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset(mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (ACL_DEL);
+    mp->client_index = cm->my_client_index;
+    mp->context = 0xdeadbeef;
+
+    mp->acl_index = ntohl(acl_indx);
+
+    //    fformat(stdout,"c: sending add_l2_bridge_interface req. to vpp\n");
+    vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
+}
+
+static void vl_api_acl_del_reply_t_handler (
+  vl_api_acl_del_reply_t *mp)
+{
+    int * retval;
+    retval = malloc(sizeof(int));
+    *retval = ntohl(mp->retval);
+
+    fformat (stdout, "l2_bridge reply %d\n", ntohl(mp->retval));
+    gocallback_acl_del_reply(retval);
+}
 
 
 #undef vl_api_version

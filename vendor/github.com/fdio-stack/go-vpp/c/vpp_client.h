@@ -31,12 +31,14 @@
 #include <vlibmemory/api.h>
 
 #include <vpp-api/vpe_msg_enum.h>
+#include <acl/acl_msg_enum.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
 
 #define vl_typedefs             /* define message structures */
 #include <vpp-api/vpe_all_api_h.h>
+#include <acl/acl_all_api_h.h>
 #undef vl_typedefs
 
 typedef struct {
@@ -68,27 +70,42 @@ typedef struct vpp_interface_summary_counters_record {
 
 
 client_main_t cm;
-
-void set_flags (int *sw_if_index, int *up_down, client_main_t *cm);
-void l2_patch_add_del (client_main_t *tm, int is_add);
-void get_vpp_summary_stats(client_main_t *cm);
-void add_l2_bridge (int bd_id, client_main_t *cm);
-void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm);
-// void set_mpls_route_add_del (client_main_t *cm, int enable_disable)
-void add_af_packet_interface (char *intf, client_main_t *cm);
-void add_del_interface_address (int enable_disable, int *sw_if_index, u32 *ipaddr, u8 *length, client_main_t *cm);
-void stats_enable_disable (int enable, client_main_t *cm);
-
+/* VPP connection */
 int connect_to_vpp(client_main_t *cm);
 int disconnect_from_vpp(void);
+/* Interfaces */
+void set_flags (int *sw_if_index, int *up_down, client_main_t *cm);
+void add_af_packet_interface (char *intf, client_main_t *cm);
+void add_del_interface_address (int enable_disable, int *sw_if_index, u32 *ipaddr, u8 *length, client_main_t *cm);
+/* L2 */
+void l2_patch_add_del (client_main_t *tm, int is_add);
+void add_l2_bridge (int bd_id, client_main_t *cm);
+void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm);
+/* Stats */
+void stats_enable_disable (int enable, client_main_t *cm);
+void get_vpp_summary_stats(client_main_t *cm);
+/* ACL */
+void dump_acl (int acl_indx, client_main_t *cm);
+void acl_add_replace (int acl_indx, client_main_t *cm);
+void acl_del (int acl_indx, client_main_t *cm);
+
 
 /* Callbacks to GO functions - must have //export Gocallback_ above GO func declation */
-extern void gocallback_l2_bridge_reply (int *retval);
-extern void gocallback_l2_bridge_set_interface_reply (int *retval);
-// extern void gocallback_mpls_route_add_del_reply (int *retval);
+/* VPP connection */
+extern void gocallback_connect_to_vpp (client_main_t *cm);
+/* Interfaces */
 extern void gocallback_af_packet_create_reply (int *retval, int *sw_if_index);
 extern void gocallback_add_del_address_reply ();
 extern void gocallback_set_interface_flags (int *retval);
-extern void gocallback_connect_to_vpp (client_main_t *cm);
+/* L2 */
+extern void gocallback_l2_bridge_reply (int *retval);
+extern void gocallback_l2_bridge_set_interface_reply (int *retval);
+/* Stats */
 extern void gocallback_vnet_summary_interface_counters (int *record_count, vpp_interface_summary_counters_record_t *records);
 extern void gocallback_vnet_interface_counters (int *record_count, vpp_interface_counters_record_t *records);
+/* ACL */
+extern void gocallback_acl_add_replace_reply (int *retval);
+extern void gocallback_acl_del_reply (int *retval);
+
+
+

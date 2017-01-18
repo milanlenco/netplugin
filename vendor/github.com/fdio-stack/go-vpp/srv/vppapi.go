@@ -45,6 +45,58 @@ var next_bdid = 1
 /*
  ***************************************************************
 
+ *** VPP ACL
+
+ ***************************************************************
+ */
+
+func dump_acl(acl_number string, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	c_acl_number := C.int(acl_number)
+	C.dump_acl(C.CString(c_acl_number), cm)
+}
+
+//export gocallback_connect_to_vpp
+func gocallback_acl_add_replace_reply(rcm *C.client_main_t) {
+	C.cm = *rcm
+	log.Infof("Connected to VPP")
+	wg_vppclient.Done()
+}
+
+// Connects to VPP shared memory API queue client. client_main_t
+// is declared in C header and allocated here. Freed in vpp_disconnect()
+func vpp_acl_add_replace(client_name string, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	cs := C.CString(client_name)
+	defer C.free(unsafe.Pointer(cs))
+
+	cm.my_client_name = cs
+	C.connect_to_vpp(cm)
+	wg_vppclient.Wait()
+}
+
+//export gocallback_connect_to_vpp
+func gocallback_acl_del_reply(rcm *C.client_main_t) {
+	C.cm = *rcm
+	log.Infof("Connected to VPP")
+	wg_vppclient.Done()
+}
+
+// Connects to VPP shared memory API queue client. client_main_t
+// is declared in C header and allocated here. Freed in vpp_disconnect()
+func vpp_acl_del(client_name string, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	cs := C.CString(client_name)
+	defer C.free(unsafe.Pointer(cs))
+
+	cm.my_client_name = cs
+	C.connect_to_vpp(cm)
+	wg_vppclient.Wait()
+}
+
+/*
+ ***************************************************************
+
  *** VPP Connect and Disconnect
 
  ***************************************************************
@@ -483,9 +535,9 @@ func VppInterfaceL2Bridge(name string, intf string) {
 		vppIntfByName[intf].sw_if_index, &C.cm)
 }
 
-// func VppAddDelRoute(name string, intf string) {
-// 	vpp_add_del_route(action string, id int, ...)
-// }
+func DumpACL(acl_number string) {
+	dump_acl(acl_number, &C.cm)
+}
 
 func VppDisconnect() {
 	vpp_disconnect()

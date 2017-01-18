@@ -524,7 +524,10 @@ _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
 _(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)   \
-_(VNET_SUMMARY_STATS_REPLY, vnet_summary_stats_reply)
+_(VNET_SUMMARY_STATS_REPLY, vnet_summary_stats_reply)                   \
+_(ACL_DEL_REPLY, acl_del_reply)                                         \
+_(ACL_ADD_REPLACE_REPLY, acl_add_replace_reply)                         \
+
 
 int connect_to_vpp(client_main_t *cm)
 {

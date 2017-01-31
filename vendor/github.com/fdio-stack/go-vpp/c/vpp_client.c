@@ -501,8 +501,19 @@ static void vl_api_acl_del_reply_t_handler (
 static void vl_api_acl_plugin_get_version_reply_t_handler
 (vl_api_acl_plugin_get_version_reply_t * mp)
 {
-  fformat (stdout, "ACL plugin version: %d.%d", ntohl(mp->major), ntohl(mp->minor));
+  fformat (stdout, "acl_plugin version: %d.%d", ntohl(mp->major), ntohl(mp->minor));
   gocallback_acl_plugin_get_version(0);
+}
+
+static void vl_api_acl_add_replace_reply_t_handler
+(vl_api_acl_add_replace_reply_t * mp)
+{
+  int * retval;
+  retval = malloc(sizeof(int));
+  *retval = ntohl(mp->retval);
+
+  fformat (stdout, "acl_replace reply %d\n", ntohl(mp->retval));
+  gocallback_acl_add_replace_reply(retval);
 }
 
 /*
@@ -568,7 +579,8 @@ _(VNET_SUMMARY_STATS_REPLY, vnet_summary_stats_reply)
 #define foreach_vpe_api_reply_msg                                       \
 _(ACL_DEL_REPLY, acl_del_reply)                                         \
 _(ACL_INTERFACE_ADD_DEL_REPLY, acl_interface_add_del_reply)             \
-_(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)
+_(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)           \
+_(ACL_ADD_REPLACE_REPLY, acl_add_replace_reply)
 
 int connect_to_vpp(client_main_t *cm)
 {
@@ -1020,6 +1032,171 @@ void acl_plugin_get_version (client_main_t *cm)
   vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
 
+void acl_add_replace (int aclIndex, client_main_t *cm)
+{
+  unformat_input_t * i = cm->input;
+  vl_api_acl_add_replace_t * mp;
+  u32 acl_index = aclIndex;
+  u32 msg_size = sizeof (*mp); /* without the rules */
+  u8 * name;
+
+  name = format (0, "acl_%08x%c", api_version, 0);
+  cm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+
+  vl_api_acl_rule_t *rules = 0;
+  int rule_idx = 0;
+  int n_rules = 0;
+  u32 proto = 0;
+  u32 port1 = 0;
+  u32 port2 = 0;
+  u32 action = 0;
+  u32 tcpflags, tcpmask;
+  u32 src_prefix_length = 0, dst_prefix_length = 0;
+  ip4_address_t src_v4address, dst_v4address;
+  ip6_address_t src_v6address, dst_v6address;
+  u8 *tag = 0;
+
+  if (!unformat (i, "%d", &acl_index)) {
+    /* Just assume -1 */
+  }
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat (i, "ipv6"))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].is_ipv6 = 1;
+    }
+    else if (unformat (i, "ipv4"))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].is_ipv6 = 0;
+    }
+    else if (unformat (i, "permit+reflect"))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].is_permit = 2;
+    }
+    else if (unformat (i, "permit"))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].is_permit = 1;
+    }
+    else if (unformat (i, "action %d", &action))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].is_permit = action;
+    }
+    else if (unformat (i, "src %U/%d",
+                       unformat_ip4_address, &src_v4address, &src_prefix_length))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
+      rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+      rules[rule_idx].is_ipv6 = 0;
+    }
+    else if (unformat (i, "src %U/%d",
+                       unformat_ip6_address, &src_v6address, &src_prefix_length))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16);
+      rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+      rules[rule_idx].is_ipv6 = 1;
+    }
+    else if (unformat (i, "dst %U/%d",
+                       unformat_ip4_address, &dst_v4address, &dst_prefix_length))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      memcpy (rules[rule_idx].dst_ip_addr, &dst_v4address, 4);
+      rules[rule_idx].dst_ip_prefix_len = dst_prefix_length;
+      rules[rule_idx].is_ipv6 = 0;
+    }
+    else if (unformat (i, "dst %U/%d",
+                       unformat_ip6_address, &dst_v6address, &dst_prefix_length))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      memcpy (rules[rule_idx].dst_ip_addr, &dst_v6address, 16);
+      rules[rule_idx].dst_ip_prefix_len = dst_prefix_length;
+      rules[rule_idx].is_ipv6 = 1;
+    }
+    else if (unformat (i, "sport %d-%d", &port1, &port2))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].srcport_or_icmptype_first = htons(port1);
+      rules[rule_idx].srcport_or_icmptype_last = htons(port2);
+    }
+    else if (unformat (i, "sport %d", &port1))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].srcport_or_icmptype_first = htons(port1);
+      rules[rule_idx].srcport_or_icmptype_last = htons(port1);
+    }
+    else if (unformat (i, "dport %d-%d", &port1, &port2))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].dstport_or_icmpcode_first = htons(port1);
+      rules[rule_idx].dstport_or_icmpcode_last = htons(port2);
+    }
+    else if (unformat (i, "dport %d", &port1))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].dstport_or_icmpcode_first = htons(port1);
+      rules[rule_idx].dstport_or_icmpcode_last = htons(port1);
+    }
+    else if (unformat (i, "tcpflags %d %d", &tcpflags, &tcpmask))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].tcp_flags_value = tcpflags;
+      rules[rule_idx].tcp_flags_mask = tcpmask;
+    }
+    else if (unformat (i, "proto %d", &proto))
+    {
+      vec_validate_acl_rules(rules, rule_idx);
+      rules[rule_idx].proto = proto;
+    }
+    else if (unformat (i, "tag %s", &tag))
+    {
+    }
+    else if (unformat (i, ","))
+    {
+      rule_idx++;
+      vec_validate_acl_rules(rules, rule_idx);
+    }
+    else
+      break;
+  }
+
+
+  if (rules)
+    n_rules = vec_len(rules);
+  else
+    n_rules = 0;
+
+  msg_size += n_rules * sizeof(rules[0]);
+
+  mp = vl_msg_api_alloc_as_if_client(msg_size);
+  memset (mp, 0, msg_size);
+  mp->_vl_msg_id = ntohs (VL_API_ACL_ADD_REPLACE + cm->msg_id_base);
+  mp->client_index = cm->my_client_index;
+  if (n_rules > 0)
+    clib_memcpy(mp->r, rules, n_rules * sizeof (vl_api_acl_rule_t));
+  if (tag)
+  {
+    if (vec_len(tag) >= sizeof(mp->tag))
+    {
+      tag[sizeof(mp->tag) - 1] = 0;
+      _vec_len(tag) = sizeof(mp->tag);
+    }
+    clib_memcpy(mp->tag, tag, vec_len(tag));
+    vec_free(tag);
+  }
+  mp->acl_index = ntohl(acl_index);
+  mp->count = htonl(n_rules);
+  fformat(stdout, "c: sending acl_add_replace req. to vpp with id:%d\n", mp->_vl_msg_id);
+  vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
+}
+
+
 /*
 -----------------------------------------------------------
 */
@@ -1037,7 +1214,4 @@ void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp)
    * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
    */
   mp->api_versions[0] = clib_host_to_net_u32 (vpe_api_version);
-}
-
-
-
+}a

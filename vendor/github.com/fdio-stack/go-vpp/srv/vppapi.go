@@ -8,6 +8,7 @@ extern client_main_t cm;
 */
 import "C"
 import (
+	"fmt"
 	"unsafe"
 
 	log "github.com/Sirupsen/logrus"
@@ -49,49 +50,105 @@ var next_bdid = 1
 
  ***************************************************************
  */
+var rv_acl_interface_add_del int
+var rv_acl_del_reply int
+var rv_acl_plugin_get_version int
 
-func dump_acl(acl_number string, cm *C.client_main_t) {
+func vpp_dump_acl(aclIndex int, cm *C.client_main_t) {
+	log.Infof("sending dump command")
 	wg_vppclient.Add(1)
-	c_acl_number := C.int(acl_number)
-	C.dump_acl(C.CString(c_acl_number), cm)
+	c_acl_index := C.int(aclIndex)
+	C.dump_acl(c_acl_index, cm)
 }
 
-//export gocallback_connect_to_vpp
-func gocallback_acl_add_replace_reply(rcm *C.client_main_t) {
-	C.cm = *rcm
-	log.Infof("Connected to VPP")
+//export gocallback_acl_plugin_get_version
+func gocallback_acl_plugin_get_version(retval *C.int) {
+	rv_acl_plugin_get_version = ^0
+	log.Infof("go: I'm the acl_plugin_get_version callback. \n")
+	if int(*retval) == 0 {
+		rv_acl_plugin_get_version = int(*retval)
+	}
 	wg_vppclient.Done()
 }
 
-// Connects to VPP shared memory API queue client. client_main_t
-// is declared in C header and allocated here. Freed in vpp_disconnect()
-func vpp_acl_add_replace(client_name string, cm *C.client_main_t) {
+func vpp_acl_plugin_get_version(hi string, cm *C.client_main_t) {
+	log.Infof("go: Called acl_version: %s\n", hi)
 	wg_vppclient.Add(1)
-	cs := C.CString(client_name)
-	defer C.free(unsafe.Pointer(cs))
-
-	cm.my_client_name = cs
-	C.connect_to_vpp(cm)
-	wg_vppclient.Wait()
-}
-
-//export gocallback_connect_to_vpp
-func gocallback_acl_del_reply(rcm *C.client_main_t) {
-	C.cm = *rcm
-	log.Infof("Connected to VPP")
+	C.acl_plugin_get_version(cm)
+	if rv_acl_plugin_get_version == ^0 {
+		log.Infof("\n **** bollocks\n")
+		return // brecode - need to fix return value
+	}
 	wg_vppclient.Done()
 }
 
-// Connects to VPP shared memory API queue client. client_main_t
-// is declared in C header and allocated here. Freed in vpp_disconnect()
-func vpp_acl_del(client_name string, cm *C.client_main_t) {
-	wg_vppclient.Add(1)
-	cs := C.CString(client_name)
-	defer C.free(unsafe.Pointer(cs))
+//export gocallback_acl_interface_add_del_reply
+func gocallback_acl_interface_add_del_reply(retval *C.int) {
+	rv_acl_interface_add_del = ^0
+	log.Infof("go: I'm the acl_interface_add_del_reply callback. \n")
+	if int(*retval) == 0 {
+		rv_acl_interface_add_del = int(*retval)
+	}
+	wg_vppclient.Done()
+}
 
-	cm.my_client_name = cs
-	C.connect_to_vpp(cm)
+func vpp_acl_interface_add_del(isAdd int, isInput int, sw_if_index int, aclIndex int, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	c_acl_index := C.int(aclIndex)
+	c_sw_if_index := C.int(sw_if_index)
+	c_is_input := C.int(isInput)
+	c_is_add := C.int(isAdd)
+	C.acl_interface_add_del(c_is_add, c_is_input, &c_sw_if_index, c_acl_index, cm)
+	log.Infof("go: Called acl_interface_add_del\n")
 	wg_vppclient.Wait()
+	if rv_acl_interface_add_del == ^0 {
+		log.Infof("\n **** bollocks\n")
+		return // brecode - need to fix return value
+	}
+}
+
+//export gocallback_acl_del_reply
+func gocallback_acl_del_reply(retval *C.int) {
+	rv_acl_del_reply = ^0
+	log.Infof("go: I'm the acl_del_reply callback. \n")
+	if int(*retval) == 0 {
+		rv_acl_del_reply = int(*retval)
+	}
+	wg_vppclient.Done()
+}
+
+func vpp_acl_del(aclIndex int, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	c_acl_index := C.int(aclIndex)
+	C.acl_del(c_acl_index, cm)
+	log.Infof("go: Called acl_del\n")
+	wg_vppclient.Wait()
+	if rv_acl_del_reply == ^0 {
+		log.Infof("\n **** bollocks\n")
+		return // brecode - need to fix return value
+	}
+}
+
+//export gocallback_acl_add_replace_reply
+func gocallback_acl_add_replace_reply(retval *C.int) {
+	rv_acl_del_reply = ^0
+	log.Infof("go: I'm the acl_add_replace callback. \n")
+	if int(*retval) == 0 {
+		rv_acl_del_reply = int(*retval)
+	}
+	wg_vppclient.Done()
+}
+
+func vpp_acl_add_replace(aclIndex int, cm *C.client_main_t) {
+	wg_vppclient.Add(1)
+	c_acl_index := C.int(aclIndex)
+	C.acl_add_replace(c_acl_index, cm)
+	log.Infof("go: Called acl_del\n")
+	wg_vppclient.Wait()
+	if rv_acl_del_reply == ^0 {
+		log.Infof("\n **** bollocks\n")
+		return // brecode - need to fix return value
+	}
 }
 
 /*
@@ -535,8 +592,26 @@ func VppInterfaceL2Bridge(name string, intf string) {
 		vppIntfByName[intf].sw_if_index, &C.cm)
 }
 
-func DumpACL(acl_number string) {
-	dump_acl(acl_number, &C.cm)
+func VppACLInterfaceAddDel(isAdd int, isInput int, intf string, aclIndex int) {
+	fmt.Println("Interface index is: ", vppIntfByName[intf].sw_if_index)
+	vpp_acl_interface_add_del(isAdd, isInput,
+		vppIntfByName[intf].sw_if_index, aclIndex, &C.cm)
+}
+
+func VppACLDel(aclIndex int) {
+	vpp_acl_del(aclIndex, &C.cm)
+}
+
+func VppDumpACL(aclIndex int) {
+	vpp_dump_acl(aclIndex, &C.cm)
+}
+
+func VppACLPluginGetVersion(hi string) {
+	vpp_acl_plugin_get_version(hi, &C.cm)
+}
+
+func VppACLAddReplace(aclIndex int) {
+	vpp_acl_add_replace(aclIndex, C.cm)
 }
 
 func VppDisconnect() {

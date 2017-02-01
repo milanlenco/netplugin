@@ -129,28 +129,6 @@ func vpp_acl_del(aclIndex int, cm *C.client_main_t) {
 	}
 }
 
-//export gocallback_acl_add_replace_reply
-func gocallback_acl_add_replace_reply(retval *C.int) {
-	rv_acl_del_reply = ^0
-	log.Infof("go: I'm the acl_add_replace callback. \n")
-	if int(*retval) == 0 {
-		rv_acl_del_reply = int(*retval)
-	}
-	wg_vppclient.Done()
-}
-
-func vpp_acl_add_replace(aclIndex int, cm *C.client_main_t) {
-	wg_vppclient.Add(1)
-	c_acl_index := C.int(aclIndex)
-	C.acl_add_replace(c_acl_index, cm)
-	log.Infof("go: Called acl_del\n")
-	wg_vppclient.Wait()
-	if rv_acl_del_reply == ^0 {
-		log.Infof("\n **** bollocks\n")
-		return // brecode - need to fix return value
-	}
-}
-
 /*
  ***************************************************************
 
@@ -608,10 +586,6 @@ func VppDumpACL(aclIndex int) {
 
 func VppACLPluginGetVersion(hi string) {
 	vpp_acl_plugin_get_version(hi, &C.cm)
-}
-
-func VppACLAddReplace(aclIndex int) {
-	vpp_acl_add_replace(aclIndex, C.cm)
 }
 
 func VppDisconnect() {

@@ -16,7 +16,7 @@ stats:
 	go build -o $(GO_DIR)/stats/stats $(GO_DIR)/stats/stats.go
 
 testclient: vpp_lib vppapi
-	go build -o testclient testclient.go
+	go build -o ./testclient ./testclient.go
 
 clean:
 	-rm $(C_DIR)/*.la

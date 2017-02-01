@@ -109,7 +109,6 @@ void dump_acl (int aclIndex, client_main_t *cm);
 void acl_del (int aclIndex, client_main_t *cm);
 void acl_interface_add_del (int isAdd, int isInput, int *sw_if_index, int aclIndex, client_main_t *cm);
 void acl_plugin_get_version(client_main_t *cm);
-void acl_add_replace(client_main_t *cm);
 
 /* Callbacks to GO functions - must have //export Gocallback_ above GO func declation */
 /* VPP connection */
@@ -128,4 +127,3 @@ extern void gocallback_vnet_interface_counters (int *record_count, vpp_interface
 extern void gocallback_acl_interface_add_del_reply (int *retval);
 extern void gocallback_acl_del_reply (int *retval);
 extern void gocallback_acl_plugin_get_version(int *retval);
-extern void gocallback_acl_add_replace(int *retval);

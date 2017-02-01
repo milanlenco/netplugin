@@ -1,4 +1,4 @@
-package srv
+package govppp
 
 /*
 #cgo CFLAGS: -I/usr/local/include/libvpp_cgoclient
@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"unsafe"
 
+	"./stats"
 	log "github.com/Sirupsen/logrus"
 	"github.com/briandowns/spinner"
-	"github.com/fdio-stack/go-vpp/srv/stats"
 
 	"encoding/binary"
 	"net"
@@ -371,7 +371,7 @@ func gocallback_vnet_summary_interface_counters(num_records *C.int, records *C.v
 
 	for i := 0; i < (int)(*num_records); i++ {
 		//want to use the same struct and get it out of here and repack (as in dedup) in the stats handler
-		var ifRecord stats.VppInterfaceStats_t
+		var ifRecord govpp.VppInterfaceStats_t
 
 		//Set the key
 		ifRecord.Key.Timestamp = ts
@@ -390,7 +390,7 @@ func gocallback_vnet_summary_interface_counters(num_records *C.int, records *C.v
 		//		log.Infof("ts: %v sw_if_index: %d counter_name: %s packets: %d bytes: %d\n", ts, records.sw_if_index, C.GoString(records.counter_name), records.packet_counter, records.byte_counter)
 
 		//todo add errors
-		stats.AddInterfaceRecord(ifRecord)
+		govpp.AddInterfaceRecord(ifRecord)
 		records = records.next
 	}
 }
@@ -406,7 +406,7 @@ func gocallback_vnet_interface_counters(num_records *C.int, records *C.vpp_inter
 
 	for i := 0; i < (int)(*num_records); i++ {
 		//want to use the same struct and get it out of here and repack (as in dedup) in the stats handler
-		var ifRecord stats.VppInterfaceStats_t
+		var ifRecord govpp.VppInterfaceStats_t
 
 		// Set the key
 		ifRecord.Key.Timestamp = ts
@@ -453,7 +453,7 @@ func gocallback_vnet_interface_counters(num_records *C.int, records *C.vpp_inter
 		//reflect.ValueOf(&ifRecord).Elem().FieldByName(counter_name).SetInt(int64(records.counter))
 
 		//todo add errors
-		stats.AddInterfaceRecord(ifRecord)
+		govpp.AddInterfaceRecord(ifRecord)
 		records = records.next
 	}
 }
@@ -590,5 +590,5 @@ func VppACLPluginGetVersion(hi string) {
 
 func VppDisconnect() {
 	vpp_disconnect()
-	stats.Close()
+	govpp.Close()
 }

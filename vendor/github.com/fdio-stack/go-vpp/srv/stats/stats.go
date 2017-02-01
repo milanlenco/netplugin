@@ -1,4 +1,4 @@
-package stats
+package govpp
 
 import (
 	"encoding/gob"

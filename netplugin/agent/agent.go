@@ -223,6 +223,8 @@ func (ag *Agent) HandleEvents() error {
 
 	go handleBgpEvents(ag.netPlugin, opts, recvErr)
 
+	go handleEndpointEvents(ag.netPlugin, opts, recvErr)
+
 	go handleEpgEvents(ag.netPlugin, opts, recvErr)
 
 	go handleServiceLBEvents(ag.netPlugin, opts, recvErr)
@@ -230,6 +232,8 @@ func (ag *Agent) HandleEvents() error {
 	go handleSvcProviderUpdEvents(ag.netPlugin, opts, recvErr)
 
 	go handleGlobalCfgEvents(ag.netPlugin, opts, recvErr)
+
+	go handlePolicyRuleEvents(ag.netPlugin, opts, recvErr)
 
 	if ag.pluginConfig.Instance.PluginMode == "docker" {
 		go ag.monitorDockerEvents(recvErr)

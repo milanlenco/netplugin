@@ -115,6 +115,8 @@ type NetworkDriver interface {
 	CreateEndpoint(id string) error
 	UpdateEndpointGroup(id string) error
 	DeleteEndpoint(id string) error
+	CreateRemoteEndpoint(id string) error
+	DeleteRemoteEndpoint(id string) error
 	CreateHostAccPort(portName, globalIP, localIP string) error
 	DeleteHostAccPort(id string) error
 	AddPeerHost(node ServiceInfo) error
@@ -138,6 +140,8 @@ type NetworkDriver interface {
 	// Set global config
 	GlobalConfigUpdate(inst InstanceInfo) error
 	InspectNameserver() ([]byte, error)
+	AddPolicyRule(id string) error
+	DelPolicyRule(id string) error
 }
 
 // WatchState is used to provide a difference between core.State structs by

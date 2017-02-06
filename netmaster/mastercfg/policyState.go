@@ -23,9 +23,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/contiv/contivmodel"
 	"github.com/contiv/netplugin/core"
-	"github.com/contiv/ofnet"
 )
 
 const (
@@ -33,10 +31,10 @@ const (
 	policyConfigPath       = policyConfigPathPrefix + "%s"
 )
 
-// RuleMap maps a policy rule to list of ofnet rules
+// RuleMap maps a policy rule to list of vpp rules
 type RuleMap struct {
-	Rule       *contivModel.Rule                 // policy rule
-	OfnetRules map[string]*ofnet.OfnetPolicyRule // Ofnet rules associated with this policy rule
+	Rule     *contivModel.Rule                  // policy rule
+	VppRules map[string]*govpp.VppnetPolicyRule // Vpp associated with this policy rule
 }
 
 // EpgPolicy has an instance of policy attached to an endpoint group
@@ -50,17 +48,12 @@ type EpgPolicy struct {
 // Epg policy database
 var epgPolicyDb = make(map[string]*EpgPolicy)
 
-// Create the netmaster
-var ofnetMaster *ofnet.OfnetMaster
-
 // state store
 var stateStore core.StateDriver
 
 // InitPolicyMgr initializes the policy manager
-func InitPolicyMgr(stateDriver core.StateDriver, ofm *ofnet.OfnetMaster) error {
-	// save statestore and ofnet masters
+func InitPolicyMgr(stateDriver core.StateDriver) error {
 	stateStore = stateDriver
-	ofnetMaster = ofm
 
 	// restore all existing epg policies
 	err := restoreEpgPolicies(stateDriver)
@@ -163,18 +156,105 @@ func (gp *EpgPolicy) Delete() error {
 	return gp.Clear()
 }
 
-// createOfnetRule creates a directional ofnet rule
-func (gp *EpgPolicy) createOfnetRule(rule *contivModel.Rule, dir string) (*ofnet.OfnetPolicyRule, error) {
+// AddRule adds a rule to epg policy
+func (gp *EpgPolicy) AddRule(rule *contivModel.Rule) error {
+	var dirs []string
+
+	// check if the rule exists already
+	if gp.RuleMaps[rule.Key] != nil {
+		// FIXME: see if we can update the rule
+		return core.Errorf("Rule already exists")
+	}
+
+	// Figure out all the directional rules we need to install
+	switch rule.Direction {
+	case "in":
+		if (rule.Protocol == "udp" || rule.Protocol == "tcp") && rule.Port != 0 {
+			dirs = []string{"inRx", "inTx"}
+		} else {
+			dirs = []string{"inRx"}
+		}
+	case "out":
+		if (rule.Protocol == "udp" || rule.Protocol == "tcp") && rule.Port != 0 {
+			dirs = []string{"outRx", "outTx"}
+		} else {
+			dirs = []string{"outTx"}
+		}
+	case "both":
+		if (rule.Protocol == "udp" || rule.Protocol == "tcp") && rule.Port != 0 {
+			dirs = []string{"inRx", "inTx", "outRx", "outTx"}
+		} else {
+			dirs = []string{"inRx", "outTx"}
+		}
+
+	}
+
+	// create a ruleMap
+	ruleMap := new(RuleMap)
+	ruleMap.VppRules = make(map[string]*govpp.VppnetPolicyRule)
+	ruleMap.Rule = rule
+
+	// Create vpp rules
+	for _, dir := range dirs {
+		vppRule, err := gp.createVppRule(rule, dir)
+		if err != nil {
+			log.Errorf("Error creating %s vpp rule for {%+v}. Err: %v", dir, rule, err)
+			return err
+		}
+
+		// add it to the rule map
+		ruleMap.VppRules[vppRule.RuleId] = vppRule
+	}
+
+	// save the rulemap
+	gp.RuleMaps[rule.Key] = ruleMap
+
+	return nil
+}
+
+// DelRule removes a rule from epg policy
+func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
+	// check if the rule exists
+	ruleMap := gp.RuleMaps[rule.Key]
+	if ruleMap == nil {
+		return core.Errorf("Rule does not exists")
+	}
+
+	// Delete each vpp rule under this policy rule
+	for _, vppRule := range ruleMap.VppRules {
+		log.Infof("Deleting rule {%+v} from policyDB", vppRule)
+
+		// Delete the rule from policyDB
+		err := vppnet.DelRule(vppRule)
+		if err != nil {
+			log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
+		}
+
+		// VK: Send DelRule to netplugin agents
+		err = delPolicyRuleState(vppRule)
+		if err != nil {
+			log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
+		}
+	}
+
+	// delete the cache
+	delete(gp.RuleMaps, rule.Key)
+
+	return nil
+}
+
+// createVppRule creates a directional vppRule rule
+func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*govpp.VppnetPolicyRule, error) {
 	var remoteEpgID int
 	var err error
 
 	ruleID := gp.EpgPolicyKey + ":" + rule.Key + ":" + dir
 
-	// Create an ofnet rule
-	ofnetRule := new(ofnet.OfnetPolicyRule)
-	ofnetRule.RuleId = ruleID
-	ofnetRule.Priority = rule.Priority
-	ofnetRule.Action = rule.Action
+	// Create an vppRule rule
+	vppRule := new(govpp.VppnetPolicyRule)
+	vppRule.RuleId = ruleID
+	vppRule.Priority = rule.Priority
+	vppRule.Action = rule.Action
 
 	// See if user specified an endpoint Group in the rule
 	if rule.FromEndpointGroup != "" {
@@ -214,19 +294,19 @@ func (gp *EpgPolicy) createOfnetRule(rule *contivModel.Rule, dir string) (*ofnet
 	// Set protocol
 	switch rule.Protocol {
 	case "tcp":
-		ofnetRule.IpProtocol = 6
+		vppRule.IpProtocol = 6
 	case "udp":
-		ofnetRule.IpProtocol = 17
+		vppRule.IpProtocol = 17
 	case "icmp":
-		ofnetRule.IpProtocol = 1
+		vppRule.IpProtocol = 1
 	case "igmp":
-		ofnetRule.IpProtocol = 2
+		vppRule.IpProtocol = 2
 	case "":
-		ofnetRule.IpProtocol = 0
+		vppRule.IpProtocol = 0
 	default:
 		proto, err := strconv.Atoi(rule.Protocol)
 		if err == nil && proto < 256 {
-			ofnetRule.IpProtocol = uint8(proto)
+			vppRule.IpProtocol = uint8(proto)
 		}
 	}
 
@@ -234,149 +314,75 @@ func (gp *EpgPolicy) createOfnetRule(rule *contivModel.Rule, dir string) (*ofnet
 	switch dir {
 	case "inRx":
 		// Set src/dest endpoint group
-		ofnetRule.DstEndpointGroup = gp.EndpointGroupID
-		ofnetRule.SrcEndpointGroup = remoteEpgID
+		vppRule.DstEndpointGroup = gp.EndpointGroupID
+		vppRule.SrcEndpointGroup = remoteEpgID
 
 		// Set src/dest IP Address
-		ofnetRule.SrcIpAddr = rule.FromIpAddress
+		vppRule.SrcIpAddr = rule.FromIpAddress
 
 		// set port numbers
-		ofnetRule.DstPort = uint16(rule.Port)
+		vppRule.DstPort = uint16(rule.Port)
 
 		// set tcp flags
 		if rule.Protocol == "tcp" && rule.Port == 0 {
-			ofnetRule.TcpFlags = "syn,!ack"
+			vppRule.TcpFlags = "syn,!ack"
 		}
 	case "inTx":
 		// Set src/dest endpoint group
-		ofnetRule.SrcEndpointGroup = gp.EndpointGroupID
-		ofnetRule.DstEndpointGroup = remoteEpgID
+		vppRule.SrcEndpointGroup = gp.EndpointGroupID
+		vppRule.DstEndpointGroup = remoteEpgID
 
 		// Set src/dest IP Address
-		ofnetRule.DstIpAddr = rule.FromIpAddress
+		vppRule.DstIpAddr = rule.FromIpAddress
 
 		// set port numbers
-		ofnetRule.SrcPort = uint16(rule.Port)
+		vppRule.SrcPort = uint16(rule.Port)
 	case "outRx":
 		// Set src/dest endpoint group
-		ofnetRule.DstEndpointGroup = gp.EndpointGroupID
-		ofnetRule.SrcEndpointGroup = remoteEpgID
+		vppRule.DstEndpointGroup = gp.EndpointGroupID
+		vppRule.SrcEndpointGroup = remoteEpgID
 
 		// Set src/dest IP Address
-		ofnetRule.SrcIpAddr = rule.ToIpAddress
+		vppRule.SrcIpAddr = rule.ToIpAddress
 
 		// set port numbers
-		ofnetRule.SrcPort = uint16(rule.Port)
+		vppRule.SrcPort = uint16(rule.Port)
 	case "outTx":
 		// Set src/dest endpoint group
-		ofnetRule.SrcEndpointGroup = gp.EndpointGroupID
-		ofnetRule.DstEndpointGroup = remoteEpgID
+		vppRule.SrcEndpointGroup = gp.EndpointGroupID
+		vppRule.DstEndpointGroup = remoteEpgID
 
 		// Set src/dest IP Address
-		ofnetRule.DstIpAddr = rule.ToIpAddress
+		vppRule.DstIpAddr = rule.ToIpAddress
 
 		// set port numbers
-		ofnetRule.DstPort = uint16(rule.Port)
+		vppRule.DstPort = uint16(rule.Port)
 
 		// set tcp flags
 		if rule.Protocol == "tcp" && rule.Port == 0 {
-			ofnetRule.TcpFlags = "syn,!ack"
+			vppRule.TcpFlags = "syn,!ack"
 		}
 	default:
 		log.Fatalf("Unknown rule direction %s", dir)
 	}
 
 	// Add the Rule to policyDB
-	err = ofnetMaster.AddRule(ofnetRule)
+	err = vppnetPolicy.AddRule(vppRule)
 	if err != nil {
-		log.Errorf("Error creating rule {%+v}. Err: %v", ofnetRule, err)
+		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
 		return nil, err
 	}
 
-	log.Infof("Added rule {%+v} to policyDB", ofnetRule)
-
-	return ofnetRule, nil
-}
-
-// AddRule adds a rule to epg policy
-func (gp *EpgPolicy) AddRule(rule *contivModel.Rule) error {
-	var dirs []string
-
-	// check if the rule exists already
-	if gp.RuleMaps[rule.Key] != nil {
-		// FIXME: see if we can update the rule
-		return core.Errorf("Rule already exists")
+	// VK: Send AddRule to netplugin agents
+	err = addPolicyRuleState(vppRule)
+	if err != nil {
+		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
+		return nil, err
 	}
 
-	// Figure out all the directional rules we need to install
-	switch rule.Direction {
-	case "in":
-		if (rule.Protocol == "udp" || rule.Protocol == "tcp") && rule.Port != 0 {
-			dirs = []string{"inRx", "inTx"}
-		} else {
-			dirs = []string{"inRx"}
-		}
-	case "out":
-		if (rule.Protocol == "udp" || rule.Protocol == "tcp") && rule.Port != 0 {
-			dirs = []string{"outRx", "outTx"}
-		} else {
-			dirs = []string{"outTx"}
-		}
-	case "both":
-		if (rule.Protocol == "udp" || rule.Protocol == "tcp") && rule.Port != 0 {
-			dirs = []string{"inRx", "inTx", "outRx", "outTx"}
-		} else {
-			dirs = []string{"inRx", "outTx"}
-		}
+	log.Infof("Added rule {%+v} to policyDB", vppRule)
 
-	}
-
-	// create a ruleMap
-	ruleMap := new(RuleMap)
-	ruleMap.OfnetRules = make(map[string]*ofnet.OfnetPolicyRule)
-	ruleMap.Rule = rule
-
-	// Create ofnet rules
-	for _, dir := range dirs {
-		ofnetRule, err := gp.createOfnetRule(rule, dir)
-		if err != nil {
-			log.Errorf("Error creating %s ofnet rule for {%+v}. Err: %v", dir, rule, err)
-			return err
-		}
-
-		// add it to the rule map
-		ruleMap.OfnetRules[ofnetRule.RuleId] = ofnetRule
-	}
-
-	// save the rulemap
-	gp.RuleMaps[rule.Key] = ruleMap
-
-	return nil
-}
-
-// DelRule removes a rule from epg policy
-func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
-	// check if the rule exists
-	ruleMap := gp.RuleMaps[rule.Key]
-	if ruleMap == nil {
-		return core.Errorf("Rule does not exists")
-	}
-
-	// Delete each ofnet rule under this policy rule
-	for _, ofnetRule := range ruleMap.OfnetRules {
-		log.Infof("Deleting rule {%+v} from policyDB", ofnetRule)
-
-		// Delete the rule from policyDB
-		err := ofnetMaster.DelRule(ofnetRule)
-		if err != nil {
-			log.Errorf("Error deleting the ofnet rule {%+v}. Err: %v", ofnetRule, err)
-		}
-	}
-
-	// delete the cache
-	delete(gp.RuleMaps, rule.Key)
-
-	return nil
+	return vppRule, nil
 }
 
 // Write the state.
@@ -406,9 +412,4 @@ func (gp *EpgPolicy) WatchAll(rsps chan core.WatchState) error {
 func (gp *EpgPolicy) Clear() error {
 	key := fmt.Sprintf(policyConfigPath, gp.ID)
 	return gp.StateDriver.ClearState(key)
-}
-
-// NotifyEpgChanged triggers GARPs.
-func NotifyEpgChanged(epgID int) {
-	ofnetMaster.InjectGARPs(epgID)
 }

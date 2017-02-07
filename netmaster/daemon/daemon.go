@@ -245,7 +245,7 @@ func (d *MasterDaemon) runLeader() {
 	d.registerService()
 
 	// initialize policy manager
-	mastercfg.InitPolicyMgr(d.stateDriver, d.ofnetMaster)
+	mastercfg.InitPolicyMgr(d.stateDriver) //brecode - , d.ofnetMaster)
 
 	// setup HTTP routes
 	d.registerRoutes(router)

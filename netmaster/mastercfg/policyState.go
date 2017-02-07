@@ -22,8 +22,9 @@ import (
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
-
+	"github.com/contiv/contivmodel"
 	"github.com/contiv/netplugin/core"
+	"github.com/fdio-stack/go-vpp/policy"
 )
 
 const (
@@ -33,8 +34,8 @@ const (
 
 // RuleMap maps a policy rule to list of vpp rules
 type RuleMap struct {
-	Rule     *contivModel.Rule                  // policy rule
-	VppRules map[string]*govpp.VppnetPolicyRule // Vpp associated with this policy rule
+	Rule     *contivModel.Rule                      // policy rule
+	VppRules map[string]*vpppolicy.VppnetPolicyRule // Vpp associated with this policy rule
 }
 
 // EpgPolicy has an instance of policy attached to an endpoint group
@@ -191,7 +192,7 @@ func (gp *EpgPolicy) AddRule(rule *contivModel.Rule) error {
 
 	// create a ruleMap
 	ruleMap := new(RuleMap)
-	ruleMap.VppRules = make(map[string]*govpp.VppnetPolicyRule)
+	ruleMap.VppRules = make(map[string]*vpppolicy.VppnetPolicyRule)
 	ruleMap.Rule = rule
 
 	// Create vpp rules
@@ -225,7 +226,7 @@ func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 		log.Infof("Deleting rule {%+v} from policyDB", vppRule)
 
 		// Delete the rule from policyDB
-		err := vppnet.DelRule(vppRule)
+		err := vpppolicy.DelRule(vppRule)
 		if err != nil {
 			log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
 		}
@@ -244,14 +245,14 @@ func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 }
 
 // createVppRule creates a directional vppRule rule
-func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*govpp.VppnetPolicyRule, error) {
+func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vpppolicy.VppnetPolicyRule, error) {
 	var remoteEpgID int
 	var err error
 
 	ruleID := gp.EpgPolicyKey + ":" + rule.Key + ":" + dir
 
 	// Create an vppRule rule
-	vppRule := new(govpp.VppnetPolicyRule)
+	vppRule := new(vpppolicy.VppnetPolicyRule)
 	vppRule.RuleId = ruleID
 	vppRule.Priority = rule.Priority
 	vppRule.Action = rule.Action
@@ -367,7 +368,7 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*govpp.V
 	}
 
 	// Add the Rule to policyDB
-	err = vppnetPolicy.AddRule(vppRule)
+	err = vpppolicy.AddRule(vppRule)
 	if err != nil {
 		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
 		return nil, err
@@ -412,4 +413,9 @@ func (gp *EpgPolicy) WatchAll(rsps chan core.WatchState) error {
 func (gp *EpgPolicy) Clear() error {
 	key := fmt.Sprintf(policyConfigPath, gp.ID)
 	return gp.StateDriver.ClearState(key)
+}
+
+// NotifyEpgChanged triggers GARPs.
+func NotifyEpgChanged(epgID int) error {
+	return nil
 }

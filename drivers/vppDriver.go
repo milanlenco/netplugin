@@ -322,11 +322,42 @@ func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, erro
 	vethID := cfgEp.EndpointID[:9]
 	intfName := fmt.Sprint(vethPrefix + vethID)
 	return intfName, nil
-
 }
 
 func (d *VppDriver) getVppIntfName(intfName string) (string, error) {
 	// Same interface format for vpp veth pair without the prefix
 	vppIntfName := intfName[4:]
 	return vppIntfName, nil
+}
+
+// AddPolicyRule creates a policy rule
+func (d *VppDriver) AddPolicyRule(id string) error {
+	cfgRule := &mastercfg.CfgPolicyRule{}
+	cfgRule.StateDriver = d.vppOper.StateDriver
+	err := cfgRule.Read(id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DelPolicyRule deletes a policy rule
+func (d *VppDriver) DelPolicyRule(id string) error {
+	cfgRule := &mastercfg.CfgPolicyRule{}
+	cfgRule.StateDriver = d.vppOper.StateDriver
+	err := cfgRule.Read(id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateRemoteEndpoint is not implemented.
+func (d *VppDriver) CreateRemoteEndpoint(id string) error {
+	return core.Errorf("Not implemented")
+}
+
+// DeleteRemoteEndpoint is not implemented.
+func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
+	return core.Errorf("Not implemented")
 }

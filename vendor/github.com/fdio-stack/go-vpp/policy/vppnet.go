@@ -1,23 +1,9 @@
-/***
-Copyright 2014 Cisco Systems Inc. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package ofnet
+package vpppolicy
 
 // This package implements openflow network manager
 
 import (
+	"fmt"
 	"net"
 	"time"
 )
@@ -55,4 +41,16 @@ type VppnetPolicyRule struct {
 	DstPort          uint16 // destination port
 	TcpFlags         string // TCP flags to match: syn || syn,ack || ack || syn,!ack || !syn,ack;
 	Action           string // rule action: 'accept' or 'deny'
+}
+
+// AddRule  adds a policy to the vpp driver
+func (p *VppPolicy) AddRule(rule *VppnetPolicyRule) error {
+	fmt.Println(rule)
+	return nil
+}
+
+// DelRule  deletes a policy to the vpp driver
+func (p *VppPolicy) DelRule(rule *VppnetPolicyRule) error {
+	fmt.Println(rule)
+	return nil
 }

@@ -1,4 +1,4 @@
-package govppp
+package srv
 
 /*
 #cgo CFLAGS: -I/usr/local/include/libvpp_cgoclient
@@ -8,17 +8,16 @@ extern client_main_t cm;
 */
 import "C"
 import (
-	"fmt"
 	"unsafe"
-
-	"./stats"
-	log "github.com/Sirupsen/logrus"
-	"github.com/briandowns/spinner"
 
 	"encoding/binary"
 	"net"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/briandowns/spinner"
+	"github.com/fdio-stack/go-vpp/srv/stats"
 )
 
 type vppInterface_t struct {
@@ -371,7 +370,7 @@ func gocallback_vnet_summary_interface_counters(num_records *C.int, records *C.v
 
 	for i := 0; i < (int)(*num_records); i++ {
 		//want to use the same struct and get it out of here and repack (as in dedup) in the stats handler
-		var ifRecord govpp.VppInterfaceStats_t
+		var ifRecord stats.VppInterfaceStats_t
 
 		//Set the key
 		ifRecord.Key.Timestamp = ts
@@ -390,7 +389,7 @@ func gocallback_vnet_summary_interface_counters(num_records *C.int, records *C.v
 		//		log.Infof("ts: %v sw_if_index: %d counter_name: %s packets: %d bytes: %d\n", ts, records.sw_if_index, C.GoString(records.counter_name), records.packet_counter, records.byte_counter)
 
 		//todo add errors
-		govpp.AddInterfaceRecord(ifRecord)
+		stats.AddInterfaceRecord(ifRecord)
 		records = records.next
 	}
 }
@@ -406,7 +405,7 @@ func gocallback_vnet_interface_counters(num_records *C.int, records *C.vpp_inter
 
 	for i := 0; i < (int)(*num_records); i++ {
 		//want to use the same struct and get it out of here and repack (as in dedup) in the stats handler
-		var ifRecord govpp.VppInterfaceStats_t
+		var ifRecord stats.VppInterfaceStats_t
 
 		// Set the key
 		ifRecord.Key.Timestamp = ts
@@ -453,7 +452,7 @@ func gocallback_vnet_interface_counters(num_records *C.int, records *C.vpp_inter
 		//reflect.ValueOf(&ifRecord).Elem().FieldByName(counter_name).SetInt(int64(records.counter))
 
 		//todo add errors
-		govpp.AddInterfaceRecord(ifRecord)
+		stats.AddInterfaceRecord(ifRecord)
 		records = records.next
 	}
 }
@@ -570,12 +569,6 @@ func VppInterfaceL2Bridge(name string, intf string) {
 		vppIntfByName[intf].sw_if_index, &C.cm)
 }
 
-func VppACLInterfaceAddDel(isAdd int, isInput int, intf string, aclIndex int) {
-	fmt.Println("Interface index is: ", vppIntfByName[intf].sw_if_index)
-	vpp_acl_interface_add_del(isAdd, isInput,
-		vppIntfByName[intf].sw_if_index, aclIndex, &C.cm)
-}
-
 func VppACLDel(aclIndex int) {
 	vpp_acl_del(aclIndex, &C.cm)
 }
@@ -590,5 +583,4 @@ func VppACLPluginGetVersion(hi string) {
 
 func VppDisconnect() {
 	vpp_disconnect()
-	govpp.Close()
 }

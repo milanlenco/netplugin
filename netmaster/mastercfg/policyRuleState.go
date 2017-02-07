@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/contiv/netplugin/core"
+	govpp "github.com/fdio-stack/go-vpp/policy"
 )
 
 const (

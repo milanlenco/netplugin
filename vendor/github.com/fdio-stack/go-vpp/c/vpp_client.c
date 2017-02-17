@@ -458,7 +458,7 @@ static void vl_api_sw_interface_set_l2_bridge_reply_t_handler (
   *retval = ntohl(mp->retval);
 
   fformat (stdout, "l2_bridge_set_interface reply %d\n", ntohl(mp->retval));
-  gocallback_l2_bridge_set_interface_reply(retval);
+  gocallback_set_interface_l2_bridge_reply(retval);
 }
 
 static void vl_api_bridge_domain_add_del_reply_t_handler (
@@ -469,7 +469,7 @@ static void vl_api_bridge_domain_add_del_reply_t_handler (
   *retval = ntohl(mp->retval);
 
   fformat (stdout, "l2_bridge reply %d\n", ntohl(mp->retval));
-  gocallback_l2_bridge_reply(retval);
+  gocallback_add_l2_bridge_reply(retval);
 }
 
 /*
@@ -912,7 +912,7 @@ void add_l2_bridge (int bd_id, client_main_t *cm)
   vl_msg_api_send_shmem (cm->vl_input_queue, (u8 *)&mp);
 }
 
-void set_l2_bridge_interface (int bd_id, int *rx_if_index, client_main_t *cm)
+void set_interface_l2_bridge (int bd_id, int *rx_if_index, client_main_t *cm)
 {
   vl_api_sw_interface_set_l2_bridge_t *mp;
 

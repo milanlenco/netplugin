@@ -181,39 +181,14 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	return nil
 }
 
-// addVppIntf creates a veth pair give a name.
-func (d *VppDriver) addVppIntf(id string, intfName string) error {
+// CreateRemoteEndpoint is not implemented.
+func (d *VppDriver) CreateRemoteEndpoint(id string) error {
+	return core.Errorf("Not implemented")
+}
 
-	// Get VPP name
-	vppIntfName, err := d.getVppIntfName(intfName)
-	if err != nil {
-		log.Infof("Error generating Vpp veth pair name. Err: %v", err)
-		return err
-	}
-
-	// Create a Veth pair
-	err = netutils.CreateVethPairVpp(intfName, vppIntfName)
-	if err != nil {
-		log.Errorf("Error creating veth pairs. Err: %v", err)
-		return err
-	}
-	log.Infof("Veth Pair Ready - int1:%s, int2:%s", intfName, vppIntfName)
-
-	// Set host-side of the veth link pair state up
-	vppLinkIntfName, err := netlink.LinkByName(vppIntfName)
-	if err != nil {
-		return err
-	}
-	netlink.LinkSetUp(vppLinkIntfName)
-	log.Infof("Creating interface in VPP with name host-%s", vppIntfName)
-
-	govpp.VppAddInterface(vppIntfName)
-	// brecode - add return on error
-	govpp.VppInterfaceAdminUp(vppIntfName)
-	// brecode - add return on error
-	govpp.VppInterfaceL2Bridge(id, vppIntfName)
-
-	return nil
+// DeleteRemoteEndpoint is not implemented.
+func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
+	return core.Errorf("Not implemented")
 }
 
 //UpdateEndpointGroup updates the endpoint with the new endpointgroup specification for the given ID.
@@ -316,20 +291,6 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 	return []byte{}, core.Errorf("Not implemented")
 }
 
-func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, error) {
-	//Create a random interface name using Endpoint ID
-	vethPrefix := "veth"
-	vethID := cfgEp.EndpointID[:9]
-	intfName := fmt.Sprint(vethPrefix + vethID)
-	return intfName, nil
-}
-
-func (d *VppDriver) getVppIntfName(intfName string) (string, error) {
-	// Same interface format for vpp veth pair without the prefix
-	vppIntfName := intfName[4:]
-	return vppIntfName, nil
-}
-
 // AddPolicyRule creates a policy rule
 func (d *VppDriver) AddPolicyRule(id string) error {
 	cfgRule := &mastercfg.CfgPolicyRule{}
@@ -352,12 +313,65 @@ func (d *VppDriver) DelPolicyRule(id string) error {
 	return nil
 }
 
-// CreateRemoteEndpoint is not implemented.
-func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	return core.Errorf("Not implemented")
+// addVppIntf creates a veth pair give a name.
+func (d *VppDriver) addVppIntf(id string, intfName string) error {
+	// Get VPP name
+	vppIntfName, err := getVppIntfName(intfName)
+	if err != nil {
+		log.Infof("Error generating vpp veth pair name. Err: %v", err)
+		return err
+	}
+	// Create a Veth pair
+	err = netutils.CreateVethPairVpp(intfName, vppIntfName)
+	if err != nil {
+		log.Errorf("Error creating veth pairs. Err: %v", err)
+		return err
+	}
+	log.Infof("Veth Pair Ready - int1:%s, int2:%s", intfName, vppIntfName)
+
+	// Set host-side link for the veth pair
+	vppLinkIntfName, err := netlink.LinkByName(vppIntfName)
+	if err != nil {
+		log.Errorf("Error setting host-side link for the veth pair, Err: %v", err)
+		return err
+	}
+	err = netlink.LinkSetUp(vppLinkIntfName)
+	if err != nil {
+		log.Errorf("Error setting state up for veth pair, Err: %v", err)
+		return err
+	}
+	log.Infof("Creating interface in VPP with name host-%s", vppIntfName)
+
+	govpp.VppAddInterface(vppIntfName)
+	// if err != nil {
+	// 	log.Errorf("Error creating the vpp-side interface, Err: %v", err)
+	// 	return err
+	// }
+	govpp.VppInterfaceAdminUp(vppIntfName)
+	// if err != nil {
+	// 	log.Errorf("Error setting the vpp-side interface state to up, Err: %v", err)
+	// 	return err
+	// }
+	govpp.VppSetInterfaceL2Bridge(id, vppIntfName)
+	// if err != nil {
+	// 	log.Errorf("Error adding interface to bridge domain, Err: %v", err)
+	// 	return err
+	// }
+	return nil
 }
 
-// DeleteRemoteEndpoint is not implemented.
-func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
-	return core.Errorf("Not implemented")
+// Helper function that returns vpp Interface name
+func getVppIntfName(intfName string) (string, error) {
+	// Same interface format for vpp veth pair without the prefix
+	vppIntfName := intfName[4:]
+	return vppIntfName, nil
+}
+
+// Helper function to generate an interface name from cfgEndpointState
+func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, error) {
+	//Create a random interface name using Endpoint ID
+	vethPrefix := "veth"
+	vethID := cfgEp.EndpointID[:9]
+	intfName := fmt.Sprint(vethPrefix + vethID)
+	return intfName, nil
 }

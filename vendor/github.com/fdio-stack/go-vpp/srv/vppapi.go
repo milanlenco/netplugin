@@ -131,7 +131,7 @@ func vpp_acl_del(aclIndex int, cm *C.client_main_t) {
 /*
  ***************************************************************
 
- *** VPP Connect and Disconnect
+ *** VPP Connect / Disconnect
 
  ***************************************************************
  */
@@ -173,7 +173,7 @@ var af_packet_sw_if_index int
 //export gocallback_af_packet_create_reply
 func gocallback_af_packet_create_reply(retval *C.int, sw_if_index *C.int) {
 	af_packet_sw_if_index = ^0
-	log.Infof("go: af_packet_create_reply callback: retval = %d \n", *retval)
+	log.Infof("Govpp: af_packet_create_reply callback: retval = %d \n", *retval)
 	if int(*retval) == 0 {
 		af_packet_sw_if_index = int(*sw_if_index)
 	}
@@ -185,10 +185,9 @@ func vpp_add_af_packet_interface(intf string, cm *C.client_main_t) {
 	C.add_af_packet_interface(C.CString(intf), cm)
 	wg_vppclient.Wait()
 	if af_packet_sw_if_index == ^0 {
-		log.Infof("\n **** bollocks\n")
 		return
 	}
-	log.Infof("go: af_packet created with sw_if_index = %d for interface = %s\n", af_packet_sw_if_index, intf)
+	log.Infof("Govpp: af_packet created with sw_if_index = %d for interface = %s\n", af_packet_sw_if_index, intf)
 
 	vppInt := vppInterface_t{
 		intf,
@@ -259,9 +258,10 @@ func vpp_set_vpp_interface_adminup(intf string, cm *C.client_main_t) {
  */
 
 var rv_bridge int
+var rv_bridge_set_interface int
 
-//export gocallback_l2_bridge_reply
-func gocallback_l2_bridge_reply(retval *C.int) {
+//export gocallback_add_l2_bridge_reply
+func gocallback_add_l2_bridge_reply(retval *C.int) {
 	rv_bridge = ^0
 	log.Infof("go: I'm the l2_bridge_reply callback. \n")
 	if int(*retval) == 0 {
@@ -282,18 +282,8 @@ func vpp_create_l2_bridge(bd_id int, cm *C.client_main_t) {
 	}
 }
 
-/*
- ***************************************************************
-
- *** VPP BRIDGE DOMAIN SET INTERFACE
-
- ***************************************************************
- */
-
-var rv_bridge_set_interface int
-
-//export gocallback_l2_bridge_set_interface_reply
-func gocallback_l2_bridge_set_interface_reply(retval *C.int) {
+//export gocallback_set_interface_l2_bridge_reply
+func gocallback_set_interface_l2_bridge_reply(retval *C.int) {
 	rv_bridge_set_interface = ^0
 	log.Infof("go: I'm the l2_bridge_set_interface_reply callback. \n")
 	if int(*retval) == 0 {
@@ -307,11 +297,10 @@ func vpp_set_interface_l2_bridge(bd_id int, intf int, cm *C.client_main_t) {
 	log.Infof("Vpp host-int with value:%d", intf)
 	c_rx_if_index := C.int(intf)
 	c_bd_id := C.int(bd_id)
-	C.set_l2_bridge_interface(c_bd_id, &c_rx_if_index, cm)
+	C.set_interface_l2_bridge(c_bd_id, &c_rx_if_index, cm)
 	log.Infof("go: Called l2_bridge_set_interface\n")
 	wg_vppclient.Wait()
 	if rv_bridge_set_interface == ^0 {
-		log.Infof("\n **** bollocks\n")
 		return // brecode - need to fix return value
 	}
 }
@@ -538,20 +527,6 @@ func VppConnect(name string) {
 	// vpp_stats_enable_disable(enable_stats, &C.cm)
 }
 
-func VppAddBridgeDomain(name string) int {
-	bdid := next_bdid
-	vppBridge := vppBridge_t{
-		name, bdid, false}
-	vpp_create_l2_bridge(bdid, &C.cm) // brecode - need to get a return value and check...
-	vppBridgeByName[name] = &vppBridge
-	next_bdid++
-	return (bdid)
-}
-
-// func VppDelBridgeDomain(name string) {
-// 	delete(vppBridgeByName, name)
-// }
-
 func VppAddInterface(veth string) {
 	vpp_add_af_packet_interface(veth, &C.cm)
 }
@@ -564,12 +539,26 @@ func VppInterfaceAdminUp(veth string) {
 	vpp_set_vpp_interface_adminup(veth, &C.cm)
 }
 
-func VppInterfaceL2Bridge(name string, intf string) {
+func VppAddBridgeDomain(name string) int {
+	bdid := next_bdid
+	vppBridge := vppBridge_t{
+		name, bdid, false}
+	vpp_create_l2_bridge(bdid, &C.cm)
+	vppBridgeByName[name] = &vppBridge
+	next_bdid++
+	return bdid
+}
+
+func VppSetInterfaceL2Bridge(name string, intf string) {
 	vpp_set_interface_l2_bridge(vppBridgeByName[name].bridge_id,
 		vppIntfByName[intf].sw_if_index, &C.cm)
 }
 
 func VppACLDel(aclIndex int) {
+	vpp_acl_del(aclIndex, &C.cm)
+}
+
+func VppACLAddReplaceRule(rule *VppnetPolicyRule) {
 	vpp_acl_del(aclIndex, &C.cm)
 }
 

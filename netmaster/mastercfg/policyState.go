@@ -22,9 +22,10 @@ import (
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/contivmodel"
+	contivModel "github.com/contiv/contivmodel"
 	"github.com/contiv/netplugin/core"
 	"github.com/fdio-stack/go-vpp/policy"
+	govpp "github.com/fdio-stack/go-vpp/srv"
 )
 
 const (
@@ -226,7 +227,7 @@ func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 		log.Infof("Deleting rule {%+v} from policyDB", vppRule)
 
 		// Delete the rule from policyDB
-		err := vpppolicy.DelRule(vppRule)
+		err := govpp.DelRule(vppRule)
 		if err != nil {
 			log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
 		}
@@ -368,7 +369,7 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vpppoli
 	}
 
 	// Add the Rule to policyDB
-	err = vpppolicy.AddRule(vppRule)
+	err = govpp.VppACLAddReplaceRule(vppRule)
 	if err != nil {
 		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
 		return nil, err

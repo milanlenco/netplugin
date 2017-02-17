@@ -3,7 +3,6 @@ package vpppolicy
 // This package implements openflow network manager
 
 import (
-	"fmt"
 	"net"
 	"time"
 )
@@ -43,14 +42,20 @@ type VppnetPolicyRule struct {
 	Action           string // rule action: 'accept' or 'deny'
 }
 
-// AddRule  adds a policy to the vpp driver
-func (p *VppPolicy) AddRule(rule *VppnetPolicyRule) error {
-	fmt.Println(rule)
-	return nil
+// DstGroupMetadata returns metadata for dst group
+func DstGroupMetadata(groupId int) (uint64, uint64) {
+	metadata := uint64(groupId) << 1
+	metadataMask := uint64(0xfffe)
+	metadata = metadata & metadataMask
+
+	return metadata, metadataMask
 }
 
-// DelRule  deletes a policy to the vpp driver
-func (p *VppPolicy) DelRule(rule *VppnetPolicyRule) error {
-	fmt.Println(rule)
-	return nil
+// SrcGroupMetadata returns metadata for src group
+func SrcGroupMetadata(groupId int) (uint64, uint64) {
+	metadata := uint64(groupId) << 16
+	metadataMask := uint64(0x7fff0000)
+	metadata = metadata & metadataMask
+
+	return metadata, metadataMask
 }

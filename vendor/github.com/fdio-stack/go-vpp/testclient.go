@@ -1,4 +1,4 @@
-package govpp
+package main
 
 /*
 #cgo CFLAGS: -I/usr/local/include/libvpp_cgoclient
@@ -36,6 +36,7 @@ func main() {
 		os.Exit(1)
 	}()
 	/* END clean up on SIGINT */
+
 	srv.VppConnect("vpp_contiv_client")
 	srv.VppAddInterface("web1")
 	srv.VppAddInterface("web2")

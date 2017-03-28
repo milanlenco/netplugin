@@ -216,6 +216,10 @@ func (ag *Agent) HandleEvents() error {
 
 	go handleGlobalCfgEvents(ag.netPlugin, opts, recvErr)
 
+	go handleEndpointEvents(ag.netPlugin, opts, recvErr)
+
+	go handlePolicyRuleEvents(ag.netPlugin, opts, recvErr)
+
 	if ag.pluginConfig.Instance.PluginMode == "docker" {
 		go ag.monitorDockerEvents(recvErr)
 	} else if ag.pluginConfig.Instance.PluginMode == "kubernetes" {

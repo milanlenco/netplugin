@@ -232,6 +232,12 @@ func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 		if err != nil {
 			log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
 		}
+
+		// brecode: Send DelRule to netplugin agents
+		err = delPolicyRuleState(ofnetRule)
+		if err != nil {
+			log.Errorf("Error deleting the ofnet rule {%+v}. Err: %v", ofnetRule, err)
+		}
 	}
 
 	// delete the cache
@@ -326,10 +332,10 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 		vppRule.DstportOrIcmpcodeFirst = uint16(rule.Port)
 		vppRule.DstportOrIcmpcodeLast = uint16(rule.Port)
 
-		// set tcp flags
-		// if rule.Protocol == "tcp" && rule.Port == 0 {
-		// 	vppRule.TCPFlagsValue = "syn,!ack"
-		// }
+		set tcp flags
+		if rule.Protocol == "tcp" && rule.Port == 0 {
+			vppRule.TCPFlagsValue = "syn,!ack"
+		}
 	case "inTx":
 		// Set src/dest endpoint group
 		vppRule.SrcEndpointGroup = gp.EndpointGroupID
@@ -355,21 +361,22 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 		vppRule.SrcportOrIcmptypeFirst = uint16(rule.Port)
 		vppRule.SrcportOrIcmptypeLast = uint16(rule.Port)
 	case "outTx":
-		// Set src/dest endpoint groupnet.ParseCIDR("10.1.1.1/24")
+		// Set src/dest endpoint group
 		vppRule.SrcEndpointGroup = gp.EndpointGroupID
 		vppRule.DstEndpointGroup = remoteEpgID
 
 		// Set src/dest IP Address
 		vppRule.DstIPAddr = getIPAddress(rule.ToIpAddress)
 		vppRule.DstIPPrefixLen = getIPMask(rule.ToIpAddress)
+
 		// set port numbers
 		vppRule.DstportOrIcmpcodeFirst = uint16(rule.Port)
 		vppRule.DstportOrIcmpcodeLast = uint16(rule.Port)
 
-		// set tcp flags
-		// if rule.Protocol == "tcp" && rule.Port == 0 {
-		// 	vppRule.TCPFlagsValue = "syn,!ack"
-		// }
+		//set tcp flags
+		if rule.Protocol == "tcp" && rule.Port == 0 {
+			vppRule.TCPFlagsValue = "syn,!ack"
+		}
 	default:
 		log.Fatalf("Unknown rule direction %s", dir)
 	}
@@ -378,6 +385,13 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 	err = govpp.VppACLAddReplaceRule(vppRule)
 	if err != nil {
 		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
+		return nil, err
+	}
+
+	// brecoce: Send AddRule to netplugin agents
+	err = addPolicyRuleState(ofnetRule)
+	if err != nil {
+		log.Errorf("Error creating rule {%+v}. Err: %v", ofnetRule, err)
 		return nil, err
 	}
 

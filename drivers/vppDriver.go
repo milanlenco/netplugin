@@ -270,6 +270,26 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 	return []byte{}, core.Errorf("Not implemented")
 }
 
+// CreateRemoteEndpoint is not implemented.
+func (d *VppDriver) CreateRemoteEndpoint(id string) error {
+	return core.Errorf("Not implemented")
+}
+
+// DeleteRemoteEndpoint is not implemented.
+func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
+	return core.Errorf("Not implemented")
+}
+
+// AddPolicyRule is not implemented
+func (d *FakeNetEpDriver) AddPolicyRule(id string) error {
+	return core.Errorf("Not implemented")
+}
+
+// DelPolicyRule is not implemented
+func (d *FakeNetEpDriver) DelPolicyRule(id string) error {
+	return core.Errorf("Not implemented")
+}
+
 // getVppIntfName returns VPP Interface name
 func getVppIntfName(intfName string) (string, error) {
 	// Same interface format for vpp veth pair without the prefix

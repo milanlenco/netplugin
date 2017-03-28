@@ -16,12 +16,13 @@ limitations under the License.
 package plugin
 
 import (
+	"sync"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	"github.com/contiv/netplugin/utils"
 	"github.com/contiv/netplugin/utils/netutils"
-	"sync"
 )
 
 // implements the generic Plugin interface
@@ -147,6 +148,16 @@ func (p *NetPlugin) DeleteEndpoint(id string) error {
 	p.Lock()
 	defer p.Unlock()
 	return p.NetworkDriver.DeleteEndpoint(id)
+}
+
+// CreateRemoteEndpoint creates an endpoint for a given ID.
+func (p *NetPlugin) CreateRemoteEndpoint(id string) error {
+	return p.NetworkDriver.CreateRemoteEndpoint(id)
+}
+
+// DeleteRemoteEndpoint destroys an endpoint for an ID.
+func (p *NetPlugin) DeleteRemoteEndpoint(id string) error {
+	return p.NetworkDriver.DeleteRemoteEndpoint(id)
 }
 
 // CreateHostAccPort creates a host access port

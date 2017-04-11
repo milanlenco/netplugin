@@ -336,3 +336,13 @@ func (p *NetPlugin) DelSvcSpec(svcName string, spec *core.ServiceSpec) {
 	defer p.Unlock()
 	p.NetworkDriver.DelSvcSpec(svcName, spec)
 }
+
+// AddPolicyRule creates a policy rule
+func (p *NetPlugin) AddPolicyRule(id string) error {
+	return p.NetworkDriver.AddPolicyRule(id)
+}
+
+// DelPolicyRule creates a policy rule
+func (p *NetPlugin) DelPolicyRule(id string) error {
+	return p.NetworkDriver.DelPolicyRule(id)
+}

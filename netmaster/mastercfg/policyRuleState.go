@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/contiv/netplugin/core"
-	"github.com/contiv/ofnet"
+	vppPolicy "github.com/fdio-stack/govpp/messages/go/acl"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 // CfgPolicyRule implements the State interface for policy rules
 type CfgPolicyRule struct {
 	core.CommonState
-	ofnet.OfnetPolicyRule
+	vppPolicy.ACLRule
 }
 
 // Write the state.
@@ -64,20 +64,20 @@ func (s *CfgPolicyRule) Clear() error {
 }
 
 // addPolicyRuleState adds policy rule to state store
-func addPolicyRuleState(ofnetRule *ofnet.OfnetPolicyRule) error {
+func addPolicyRuleState(vppRule *vppPolicy.ACLRule) error {
 	ruleCfg := &CfgPolicyRule{}
 	ruleCfg.StateDriver = stateStore
-	ruleCfg.OfnetPolicyRule = (*ofnetRule)
+	ruleCfg.ACLRule = (*vppRule)
 
 	// Save the rule
 	return ruleCfg.Write()
 }
 
 // delPolicyRuleState deletes policy rule from state store
-func delPolicyRuleState(ofnetRule *ofnet.OfnetPolicyRule) error {
+func delPolicyRuleState(vppRule *vppPolicy.ACLRule) error {
 	ruleCfg := &CfgPolicyRule{}
 	ruleCfg.StateDriver = stateStore
-	ruleCfg.OfnetPolicyRule = (*ofnetRule)
+	ruleCfg.ACLRule = (*vppRule)
 
 	// Delete the rule
 	return ruleCfg.Clear()

@@ -234,9 +234,9 @@ func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 		}
 
 		// brecode: Send DelRule to netplugin agents
-		err = delPolicyRuleState(ofnetRule)
+		err = delPolicyRuleState(vppRule)
 		if err != nil {
-			log.Errorf("Error deleting the ofnet rule {%+v}. Err: %v", ofnetRule, err)
+			log.Errorf("Error deleting the vppRule rule {%+v}. Err: %v", vppRule, err)
 		}
 	}
 
@@ -332,7 +332,7 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 		vppRule.DstportOrIcmpcodeFirst = uint16(rule.Port)
 		vppRule.DstportOrIcmpcodeLast = uint16(rule.Port)
 
-		set tcp flags
+		//set tcp flags
 		if rule.Protocol == "tcp" && rule.Port == 0 {
 			vppRule.TCPFlagsValue = "syn,!ack"
 		}
@@ -381,17 +381,17 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 		log.Fatalf("Unknown rule direction %s", dir)
 	}
 
-	// Add the Rule to policyDB
-	err = govpp.VppACLAddReplaceRule(vppRule)
-	if err != nil {
-		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
-		return nil, err
-	}
+	// // Add the Rule to policyDB
+	// err = govpp.VppACLAddReplaceRule(vppRule)
+	// if err != nil {
+	// 	log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
+	// 	return nil, err
+	// }
 
 	// brecoce: Send AddRule to netplugin agents
-	err = addPolicyRuleState(ofnetRule)
+	err = addPolicyRuleState(vppRule)
 	if err != nil {
-		log.Errorf("Error creating rule {%+v}. Err: %v", ofnetRule, err)
+		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
 		return nil, err
 	}
 

@@ -272,7 +272,7 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 
 // CreateRemoteEndpoint is not implemented.
 func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	return core.Errorf("Not implemented")
+	log.Infof("Not implemented")
 }
 
 // DeleteRemoteEndpoint is not implemented.

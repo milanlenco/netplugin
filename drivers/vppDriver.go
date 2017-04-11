@@ -90,7 +90,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	}
 	isAdd := true
 	log.Infof("Create net %+v \n", cfgNw)
-	bdID, err := govpp.VppAddDelBridgeDomain(id, isAdd)
+	bdID, err := govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), isAdd)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 // DeleteNetwork deletes a network for a given ID from VPP
 func (d *VppDriver) DeleteNetwork(id string, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
 	isAdd := false
-	bdID, err := govpp.VppAddDelBridgeDomain(id, isAdd)
+	bdID, err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), isAdd)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 
 // CreateRemoteEndpoint is not implemented.
 func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	log.Infof("Not implemented")
+	return core.Errorf("Not implemented")
 }
 
 // DeleteRemoteEndpoint is not implemented.
@@ -281,12 +281,12 @@ func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
 }
 
 // AddPolicyRule is not implemented
-func (d *FakeNetEpDriver) AddPolicyRule(id string) error {
+func (d *VppDriver) AddPolicyRule(id string) error {
 	return core.Errorf("Not implemented")
 }
 
 // DelPolicyRule is not implemented
-func (d *FakeNetEpDriver) DelPolicyRule(id string) error {
+func (d *VppDriver) DelPolicyRule(id string) error {
 	return core.Errorf("Not implemented")
 }
 

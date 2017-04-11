@@ -333,9 +333,9 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 		vppRule.DstportOrIcmpcodeLast = uint16(rule.Port)
 
 		//set tcp flags
-		if rule.Protocol == "tcp" && rule.Port == 0 {
-			vppRule.TCPFlagsValue = "syn,!ack"
-		}
+		// if rule.Protocol == "tcp" && rule.Port == 0 {
+		// 	vppRule.TCPFlagsValue = "syn,!ack"
+		//}
 	case "inTx":
 		// Set src/dest endpoint group
 		vppRule.SrcEndpointGroup = gp.EndpointGroupID
@@ -374,9 +374,9 @@ func (gp *EpgPolicy) createVppRule(rule *contivModel.Rule, dir string) (*vppPoli
 		vppRule.DstportOrIcmpcodeLast = uint16(rule.Port)
 
 		//set tcp flags
-		if rule.Protocol == "tcp" && rule.Port == 0 {
-			vppRule.TCPFlagsValue = "syn,!ack"
-		}
+		// if rule.Protocol == "tcp" && rule.Port == 0 {
+		// 	vppRule.TCPFlagsValue = "syn,!ack"
+		// }
 	default:
 		log.Fatalf("Unknown rule direction %s", dir)
 	}

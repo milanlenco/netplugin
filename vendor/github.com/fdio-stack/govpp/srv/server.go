@@ -6,12 +6,12 @@ package srv
 import (
 	"errors"
 	"fmt"
-	"govpp-master/examples/go/interfaces"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/fdio-stack/govpp"
 	"github.com/fdio-stack/govpp/api"
 	"github.com/fdio-stack/govpp/messages/go/acl"
+	"github.com/fdio-stack/govpp/messages/go/interfaces"
 	"github.com/fdio-stack/govpp/messages/go/vpe"
 )
 
@@ -32,9 +32,6 @@ type vppRuleT struct {
 	index uint32
 }
 
-// Start with bridgedainID = 1
-var nextBdid uint32 = 1
-
 // Keeps a map of the associated Contiv Network ID and VPP bridge domains
 var vppBridgeByID = make(map[string]*vppBridgeDomain)
 var vppIntfByName = make(map[string]*vppInterface)
@@ -54,27 +51,23 @@ func VppConnect() {
 }
 
 // VppAddDelBridgeDomain creates a bridge domain inside VPP
-func VppAddDelBridgeDomain(id string, isAdd bool) (uint32, error) {
+func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd bool) (uint32, error) {
 	if isAdd {
-		bdid := nextBdid
 		vppBridge := vppBridgeDomain{
-			id, bdid, false}
-		err := vpp_add_del_l2_bridge_domain(bdid, 1)
+			id, pktTag, false}
+		err := vpp_add_del_l2_bridge_domain(pktTag, 1)
 		if err != nil {
 			return 0, err
 		}
 		vppBridgeByID[id] = &vppBridge
-		nextBdid++
-		return bdid, nil
+		return pktTag, nil
 	}
-	bdid := nextBdid - 1
 	delete(vppBridgeByID, id)
-	err := vpp_add_del_l2_bridge_domain(bdid, 0)
+	err := vpp_add_del_l2_bridge_domain(pktTag, 0)
 	if err != nil {
 		return 0, err
 	}
-	nextBdid--
-	return bdid, nil
+	return pktTag, nil
 }
 
 // VppAddInterface creates an af_packet interface in VPP

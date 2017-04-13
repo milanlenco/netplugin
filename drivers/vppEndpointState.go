@@ -35,6 +35,7 @@ type VppOperEndpointState struct {
 	HomingHost  string `json:"homingHost"`
 	IntfName    string `json:"intfName"`
 	PortName    string `json:"portName"`
+	VtepIP      string `json:"vtepIP"`
 }
 
 // Matches matches the fields updated from configuration state

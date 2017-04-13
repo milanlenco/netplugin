@@ -97,6 +97,17 @@ func VppSetInterfaceL2Bridge(id string, vppIntf string) error {
 	return nil
 }
 
+// VppVxlanAddDelTunnel creates or deletes a VXLAN tunnel
+func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
+	dstAddr []byte, vni uint32, encapVrfID uint32, decapNextIndex uint32) error {
+	err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
+		dstAddr, vni, encapVrfID, decapNextIndex)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // VppACLAddReplaceRule adds/replaces a rule in VPP
 func VppACLAddReplaceRule(vppRule *acl.ACLRule) error {
 	err := vpp_acl_add_replace_rule(vppRule)
@@ -274,6 +285,48 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
 	reply := &interfaces.SwInterfaceSetFlagsReply{}
 	ch.Decoder.DecodeMsg(vppReply.Data, reply)
 
+	if reply.Retval != 0 {
+		return errors.New("Could not add set af_packet interface flag, admin state up")
+	}
+	return nil
+}
+
+/*
+ ***************************************************************
+
+ *** VPP VXLAN
+
+ ***************************************************************
+ */
+
+func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
+	dstAddr []byte, vni uint32, encapVrfID uint32, decapNextIndex uint32) error {
+
+	conn := govpp.Connect()
+	defer conn.Disconnect()
+
+	ch := conn.NewApiChannel()
+	defer ch.Close()
+
+	req := &vpe.VxlanAddDelTunnel{
+		IsAdd:          isAdd,
+		IsIpv6:         isIPv6,
+		SrcAddress:     srcAddr,
+		DstAddress:     dstAddr,
+		EncapVrfID:     encapVrfID,
+		DecapNextIndex: decapNextIndex,
+		Vni:            vni,
+	}
+
+	// send the request - channel API instead of SendRequest
+	ch.ReqChan <- &api.VppRequest{Message: req}
+
+	// receive the response - channel API instead of ReceiveReply
+	vppReply := <-ch.ReplyChan
+	reply := &vpe.VxlanAddDelTunnelReply{}
+	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+
+	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {
 		return errors.New("Could not add set af_packet interface flag, admin state up")
 	}

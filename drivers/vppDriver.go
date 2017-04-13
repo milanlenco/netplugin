@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
+	"github.com/contiv/netplugin/netplugin/nameserver"
 	"github.com/contiv/netplugin/utils/netutils"
 	govpp "github.com/fdio-stack/govpp/srv"
 	netlink "github.com/vishvananda/netlink"
@@ -23,7 +25,10 @@ type VppDriverOperState struct {
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	vppOper VppDriverOperState // Oper state of the driver
+	vppOper    VppDriverOperState // Oper state of the driver
+	localIP    string             // Local IP address
+	lock       sync.Mutex         // lock for modifying shared state
+	nameServer *nameserver.NetpluginNameServer
 }
 
 // Write the state
@@ -55,6 +60,7 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 		return core.Errorf("Invalid arguments. instance-info: %+v", info)
 	}
 	d.vppOper.StateDriver = info.StateDriver
+	log.Infof("this is my 50cents: %s", info.VtepIP)
 	err := d.vppOper.Read(info.HostLabel)
 	if core.ErrIfKeyExists(err) != nil {
 		log.Errorf("Failed to read driver oper state for key %q. Error: %s",
@@ -163,6 +169,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		IntfName:    cfgEp.IntfName,
 		HomingHost:  cfgEp.HomingHost,
 		PortName:    intfName,
+		VtepIP:      cfgEp.VtepIP,
 	}
 
 	operEp.StateDriver = d.vppOper.StateDriver
@@ -293,7 +300,7 @@ func (d *VppDriver) DelPolicyRule(id string) error {
 // getVppIntfName returns VPP Interface name
 func getVppIntfName(intfName string) (string, error) {
 	// Same interface format for vpp veth pair without the prefix
-	vppIntfName := intfName[4:]
+	vppIntfName := intfName[5:]
 	if vppIntfName == "" {
 		err := errors.New("Could not generate name for VPP interface")
 		return "", err
@@ -304,7 +311,7 @@ func getVppIntfName(intfName string) (string, error) {
 // getIntfName generates an interface name from cfgEndpointState
 func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, error) {
 	//Create a random interface name using Endpoint ID
-	vethPrefix := "veth"
+	vethPrefix := "veth_"
 	vethID := cfgEp.EndpointID[:9]
 	if vethID == "" {
 		err := errors.New("Error getting ID from cfgEp ID")

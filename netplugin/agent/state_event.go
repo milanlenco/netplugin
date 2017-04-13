@@ -149,7 +149,7 @@ func processEpState(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, epID st
 		log.Errorf("Failed to read config for ep '%s' \n", epID)
 		return err
 	}
-
+	log.Infof("Print the epCFG %s, ip: %s, host: %s", epCfg.VtepIP, epCfg.HomingHost, opts.HostLabel)
 	eptype := "local"
 	if checkRemoteHost(epCfg.VtepIP, epCfg.HomingHost, opts.HostLabel) {
 		eptype = "remote"

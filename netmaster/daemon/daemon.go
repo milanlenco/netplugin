@@ -134,7 +134,7 @@ func (d *MasterDaemon) agentDiscoveryLoop() {
 	agentEventCh := make(chan objdb.WatchServiceEvent, 1)
 	// watchStopCh := make(chan bool, 1)
 
-	// // Start a watch on netplugin service
+	// Start a watch on netplugin service
 	// err := d.objdbClient.WatchService("netplugin", agentEventCh, watchStopCh)
 	// if err != nil {
 	// 	log.Fatalf("Could not start a watch on netplugin service. Err: %v", err)

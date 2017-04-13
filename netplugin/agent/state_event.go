@@ -261,7 +261,7 @@ func processReinit(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, newCfg *
 	// initialize the config
 	pluginConfig := plugin.Config{
 		Drivers: plugin.Drivers{
-			Network: "ovs",
+			Network: "vpp",
 			State:   stateStore,
 		},
 		Instance: opts,
@@ -323,7 +323,7 @@ func processARPModeChange(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, a
 	// initialize the config
 	pluginConfig := plugin.Config{
 		Drivers: plugin.Drivers{
-			Network: "ovs",
+			Network: "vpp",
 			State:   stateStore,
 		},
 		Instance: opts,
@@ -495,6 +495,10 @@ func processStateEvent(netPlugin *plugin.NetPlugin, opts core.InstanceInfo, rsps
 				}
 				processNetEvent(netPlugin, nwCfg, isDelete)
 			}
+		}
+		if epCfg, ok := currentState.(*mastercfg.CfgEndpointState); ok {
+			log.Infof("Received %q for Endpoint: %q", eventStr, epCfg.ID)
+			processRemoteEpState(netPlugin, opts, epCfg, isDelete)
 		}
 		if bgpCfg, ok := currentState.(*mastercfg.CfgBgpState); ok {
 			log.Infof("Received %q for Bgp: %q", eventStr, bgpCfg.Hostname)

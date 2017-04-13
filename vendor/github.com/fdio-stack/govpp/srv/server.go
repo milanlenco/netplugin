@@ -99,9 +99,9 @@ func VppSetInterfaceL2Bridge(id string, vppIntf string) error {
 
 // VppVxlanAddDelTunnel creates or deletes a VXLAN tunnel
 func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
-	dstAddr []byte, vni uint32, encapVrfID uint32, decapNextIndex uint32) error {
+	dstAddr []byte, vni uint32) error {
 	err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
-		dstAddr, vni, encapVrfID, decapNextIndex)
+		dstAddr, vni)
 	if err != nil {
 		return err
 	}
@@ -300,7 +300,7 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
  */
 
 func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
-	dstAddr []byte, vni uint32, encapVrfID uint32, decapNextIndex uint32) error {
+	dstAddr []byte, vni uint32) error {
 
 	conn := govpp.Connect()
 	defer conn.Disconnect()
@@ -313,8 +313,6 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 		IsIpv6:         isIPv6,
 		SrcAddress:     srcAddr,
 		DstAddress:     dstAddr,
-		EncapVrfID:     encapVrfID,
-		DecapNextIndex: decapNextIndex,
 		Vni:            vni,
 	}
 

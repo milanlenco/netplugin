@@ -99,13 +99,13 @@ func VppSetInterfaceL2Bridge(id string, vppIntf string, shg uint8) error {
 
 // VppVxlanAddDelTunnel creates or deletes a VXLAN tunnel
 func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
-	dstAddr []byte, vni uint32) error {
-	err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
-		dstAddr, vni, shg)
+	dstAddr []byte, vni uint32) (uint32, error) {
+	tunnelIfIndex, err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
+		dstAddr, vn)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return tunnelIfIndex, nil
 }
 
 // VppACLAddReplaceRule adds/replaces a rule in VPP

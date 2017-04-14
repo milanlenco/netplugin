@@ -89,8 +89,8 @@ func VppInterfaceAdminUp(vppIntf string) error {
 }
 
 // VppSetInterfaceL2Bridge requests bridge mode for interface
-func VppSetInterfaceL2Bridge(id string, vppIntf string) error {
-	err := vpp_set_interface_l2_bridge(id, vppIntf)
+func VppSetInterfaceL2Bridge(id string, vppIntf string, shg uint8) error {
+	err := vpp_set_interface_l2_bridge(id, vppIntf, shg)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func VppSetInterfaceL2Bridge(id string, vppIntf string) error {
 func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	dstAddr []byte, vni uint32) error {
 	err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
-		dstAddr, vni)
+		dstAddr, vni, shg)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 	return nil
 }
 
-func vpp_set_interface_l2_bridge(id string, vppIntf string) error {
+func vpp_set_interface_l2_bridge(id string, vppIntf string, shg uint8) error {
 	conn := govpp.Connect()
 	defer conn.Disconnect()
 
@@ -200,7 +200,7 @@ func vpp_set_interface_l2_bridge(id string, vppIntf string) error {
 	req := &vpe.SwInterfaceSetL2Bridge{
 		RxSwIfIndex: vppIntfByName[vppIntf].swIfIndex,
 		BdID:        vppBridgeByID[id].bridgeID,
-		Shg:         0,
+		Shg:         shg,
 		Bvi:         0,
 		Enable:      1,
 	}
@@ -300,8 +300,8 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
  */
 
 func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
-	dstAddr []byte, vni uint32) error {
-
+	dstAddr []byte, vni uint32) (uint32, error) {
+	log.Debug("I'm in mofo")
 	conn := govpp.Connect()
 	defer conn.Disconnect()
 
@@ -309,11 +309,11 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	defer ch.Close()
 
 	req := &vpe.VxlanAddDelTunnel{
-		IsAdd:          isAdd,
-		IsIpv6:         isIPv6,
-		SrcAddress:     srcAddr,
-		DstAddress:     dstAddr,
-		Vni:            vni,
+		IsAdd:      isAdd,
+		IsIpv6:     isIPv6,
+		SrcAddress: srcAddr,
+		DstAddress: dstAddr,
+		Vni:        vni,
 	}
 
 	// send the request - channel API instead of SendRequest
@@ -326,9 +326,9 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {
-		return errors.New("Could not add set af_packet interface flag, admin state up")
+		return 0, errors.New("Could not add set af_packet interface flag, admin state up")
 	}
-	return nil
+	return reply.SwIfIndex, nil
 }
 
 /*

@@ -61,7 +61,7 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	}
 	d.vppOper.StateDriver = info.StateDriver
 	d.localIP = info.VtepIP
-    err := d.vppOper.Read(info.HostLabel)
+	err := d.vppOper.Read(info.HostLabel)
 	if core.ErrIfKeyExists(err) != nil {
 		log.Errorf("Failed to read driver oper state for key %q. Error: %s",
 			info.HostLabel, err)
@@ -95,6 +95,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		return err
 	}
 	isAdd := true
+	shg := uint8(0)
 	log.Infof("Create net %+v \n", cfgNw)
 	bdID, err := govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), isAdd)
 	if err != nil {
@@ -279,31 +280,36 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 
 // CreateRemoteEndpoint is not implemented.
 func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-    var err error
-    operEp := &VppOperEndpointState{}
-    operEp.StateDriver = d.vppOper.StateDriver
-    err = operEp.Read(id)
-    if err != nil {
-        return err
-    }
+	var err error
+	operEp := &VppOperEndpointState{}
+	operEp.StateDriver = d.vppOper.StateDriver
+	err = operEp.Read(id)
+	if err != nil {
+		return err
+	}
 
-    cfgNw := mastercfg.CfgNetworkState{}
-    cfgNw.StateDriver = d.vppOper.StateDriver
-    err = cfgNw.Read(operEp.NetID)
-    if err != nil {
-        log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
-    return err
-    }
-        isAdd := uint8(1)
-        isIPv6 := uint8(0)
-        srcAddr := []byte(operEp.VtepIP)
-        dstAddr := []byte(d.localIP)
-        vni := uint32(cfgNw.ExtPktTag)
-        err = govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
-        if err != nil {
-            return err
-        }
-    return nil
+	cfgNw := mastercfg.CfgNetworkState{}
+	cfgNw.StateDriver = d.vppOper.StateDriver
+	err = cfgNw.Read(operEp.NetID)
+	if err != nil {
+		log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
+		return err
+	}
+	isAdd := uint8(1)
+	isIPv6 := uint8(0)
+	srcAddr := []byte(operEp.VtepIP)
+	dstAddr := []byte(d.localIP)
+	vni := uint32(cfgNw.ExtPktTag)
+	shg := uint8(1)
+	tunnelIfIndex, err = govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
+	if err != nil {
+		return err
+	}
+	err = govpp.VppSetInterfaceL2Bridge(id, tunnelIfIndex, shg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // DeleteRemoteEndpoint is not implemented.

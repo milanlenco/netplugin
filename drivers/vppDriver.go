@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -94,14 +96,29 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		log.Errorf("Failed to read net %s \n", cfgNw.ID)
 		return err
 	}
-	isAdd := true
-	shg := uint8(0)
+	isAdd := 1
 	log.Infof("Create net %+v \n", cfgNw)
-	bdID, err := govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), isAdd)
+	err = govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), isAdd)
 	if err != nil {
 		return err
 	}
-	log.Infof("VPP Bridge domain successfully created with id: %d", bdID)
+	localIP := d.localIP
+	clusterIP := strings.Split(os.Getenv("CLUSTER_NODE_IPS"), ",")
+	for nodeIP := range clusterIP {
+		if nodeIP != localIP {
+			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, 0, []byte(localIP), []byte(nodeIP), cfgNw.ExtPktTag)
+			if err != nil {
+				log.Infof("Could not create vxlan tunnel")
+				return err
+			}
+			err = govpp.VppSetInterfaceL2Bridge(id, 1, tunnelIfIndex, uint8(0))
+			if err != nil {
+				log.Errorf("Error adding interface to bridge domain, Err: %v", err)
+				return err
+			}
+		}
+
+	}
 	return nil
 }
 
@@ -162,15 +179,15 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 
 	// Save the oper state
 	operEp = &VppOperEndpointState{
-		NetID:       cfgEp.NetID,
-		EndpointID:  cfgEp.EndpointID,
-		ServiceName: cfgEp.ServiceName,
-		IPAddress:   cfgEp.IPAddress,
-		MacAddress:  cfgEp.MacAddress,
-		IntfName:    cfgEp.IntfName,
-		HomingHost:  cfgEp.HomingHost,
-		PortName:    intfName,
-		VtepIP:      d.localIP,
+		NetID:           cfgEp.NetID,
+		EndpointID:      cfgEp.EndpointID,
+		ServiceName:     cfgEp.ServiceName,
+		IPAddress:       cfgEp.IPAddress,
+		MacAddress:      cfgEp.MacAddress,
+		IntfName:        cfgEp.IntfName,
+		HomingHost:      cfgEp.HomingHost,
+		PortName:        intfName,
+		HomingIPAddress: d.localIP,
 	}
 
 	operEp.StateDriver = d.vppOper.StateDriver
@@ -301,11 +318,11 @@ func (d *VppDriver) CreateRemoteEndpoint(id string) error {
 	dstAddr := []byte(d.localIP)
 	vni := uint32(cfgNw.ExtPktTag)
 	shg := uint8(1)
-	tunnelIfIndex, err = govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
+	tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
 	if err != nil {
 		return err
 	}
-	err = govpp.VppSetInterfaceL2Bridge(id, tunnelIfIndex, shg)
+	err = govpp.VppSetInterfaceL2Bridge(id, string(tunnelIfIndex), shg)
 	if err != nil {
 		return err
 	}
@@ -352,7 +369,7 @@ func (d *VppDriver) getIntfName(cfgEp *mastercfg.CfgEndpointState) (string, erro
 }
 
 // addVppIntf creates a veth pair give a name and attaches one end to VPP.
-func (d *VppDriver) addVppIntf(id string, intfName string) error {
+func (d *VppDriver) addVppIntf(id string, intfName string, shg uint8) error {
 	// Get VPP name
 	vppIntfName, err := getVppIntfName(intfName)
 	if err != nil {
@@ -387,7 +404,7 @@ func (d *VppDriver) addVppIntf(id string, intfName string) error {
 		log.Errorf("Error setting the vpp-side interface state to up, Err: %v", err)
 		return err
 	}
-	err = govpp.VppSetInterfaceL2Bridge(id, vppIntfName)
+	err = govpp.VppSetInterfaceL2Bridge(id, 0, uint8(0))
 	if err != nil {
 		log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 		return err

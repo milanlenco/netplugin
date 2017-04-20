@@ -32,8 +32,20 @@ type vppRuleT struct {
 	index uint32
 }
 
+type vppVxlanTunnel struct {
+	name      string
+	swIfIndex uint32
+	tunnels   []vxlanTunnels
+}
+
+type vxlanTunnels struct {
+	srcAddr string
+	dstAddr string
+}
+
 // Keeps a map of the associated Contiv Network ID and VPP bridge domains
 var vppBridgeByID = make(map[string]*vppBridgeDomain)
+var vxlanByID = make(map[string]*vppVxlanTunnel)
 var vppIntfByName = make(map[string]*vppInterface)
 var vppRuleByID = make(map[string]*vppRuleT)
 
@@ -51,8 +63,8 @@ func VppConnect() {
 }
 
 // VppAddDelBridgeDomain creates a bridge domain inside VPP
-func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd bool) (uint32, error) {
-	if isAdd {
+func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8) (uint32, error) {
+	if isAdd == 1 {
 		vppBridge := vppBridgeDomain{
 			id, pktTag, false}
 		err := vpp_add_del_l2_bridge_domain(pktTag, 1)
@@ -67,7 +79,7 @@ func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd bool) (uint32, error)
 	if err != nil {
 		return 0, err
 	}
-	return pktTag, nil
+	return nil
 }
 
 // VppAddInterface creates an af_packet interface in VPP
@@ -89,10 +101,22 @@ func VppInterfaceAdminUp(vppIntf string) error {
 }
 
 // VppSetInterfaceL2Bridge requests bridge mode for interface
-func VppSetInterfaceL2Bridge(id string, vppIntf string, shg uint8) error {
-	err := vpp_set_interface_l2_bridge(id, vppIntf, shg)
-	if err != nil {
-		return err
+func VppSetInterfaceL2Bridge(id string, interfaceType int, tunnelIfIndex uint32, shg uint8) error {
+	bdid := vppBridgeByID[id].bridgeID
+	switch interfaceType {
+	case 0:
+		intfIndex := vppIntfByName[vppIntf].swIfIndex
+		err := vpp_set_interface_l2_bridge(bdid, intfIndex, shg)
+		if err != nil {
+			return err
+		}
+	case 1:
+		err := vpp_set_interface_l2_bridge(bdid, tunnelIfIndex, shg)
+		if err != nil {
+			return err
+		}
+	default:
+		return error.New("Unkonwn interface type")
 	}
 	return nil
 }
@@ -101,7 +125,7 @@ func VppSetInterfaceL2Bridge(id string, vppIntf string, shg uint8) error {
 func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	dstAddr []byte, vni uint32) (uint32, error) {
 	tunnelIfIndex, err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
-		dstAddr, vn)
+		dstAddr, vni)
 	if err != nil {
 		return 0, err
 	}
@@ -181,7 +205,7 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 	return nil
 }
 
-func vpp_set_interface_l2_bridge(id string, vppIntf string, shg uint8) error {
+func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error {
 	conn := govpp.Connect()
 	defer conn.Disconnect()
 
@@ -198,8 +222,8 @@ func vpp_set_interface_l2_bridge(id string, vppIntf string, shg uint8) error {
 	}
 
 	req := &vpe.SwInterfaceSetL2Bridge{
-		RxSwIfIndex: vppIntfByName[vppIntf].swIfIndex,
-		BdID:        vppBridgeByID[id].bridgeID,
+		RxSwIfIndex: intfIndex,
+		BdID:        bdid,
 		Shg:         shg,
 		Bvi:         0,
 		Enable:      1,
@@ -301,7 +325,6 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
 
 func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	dstAddr []byte, vni uint32) (uint32, error) {
-	log.Debug("I'm in mofo")
 	conn := govpp.Connect()
 	defer conn.Disconnect()
 
@@ -326,7 +349,7 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {
-		return 0, errors.New("Could not add set af_packet interface flag, admin state up")
+		return 0, errors.New("Could not create vxlanTunnel")
 	}
 	return reply.SwIfIndex, nil
 }

@@ -316,9 +316,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: "contiv_purple", auto_config: false
             node.vm.provider "virtualbox" do |v|
                 customize(v, :id)
-                v.customize ['modifyvm', :id, '--nicpromisc2', 'allow-all']
-                v.customize ['modifyvm', :id, '--nicpromisc3', 'allow-all']
-                v.customize ['modifyvm', :id, '--nicpromisc4', 'allow-all']
+                v.customize ['modifyvm', :id, '--nictype2', '82545EM']
+                v.customize ['modifyvm', :id, '--nictype3', '82545EM']
+                v.customize ['modifyvm', :id, '--nictype4', '82545EM']
+                v.memory = 4096
+                v.cpus =2 
             end
 
             # mount the host directories

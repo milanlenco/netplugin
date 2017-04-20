@@ -63,22 +63,22 @@ func VppConnect() {
 }
 
 // VppAddDelBridgeDomain creates a bridge domain inside VPP
-func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8) (uint32, error) {
+func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8) error {
 	if isAdd == 1 {
 		vppBridge := vppBridgeDomain{
 			id, pktTag, false}
-		err := vpp_add_del_l2_bridge_domain(pktTag, 1)
+		err := vpp_add_del_l2_bridge_domain(pktTag, isAdd)
 		if err != nil {
-			return 0, err
+			return err
 		}
 		vppBridgeByID[id] = &vppBridge
-		return pktTag, nil
+		return nil
+	}
+	err := vpp_add_del_l2_bridge_domain(pktTag, isAdd)
+	if err != nil {
+		return err
 	}
 	delete(vppBridgeByID, id)
-	err := vpp_add_del_l2_bridge_domain(pktTag, 0)
-	if err != nil {
-		return 0, err
-	}
 	return nil
 }
 
@@ -101,7 +101,7 @@ func VppInterfaceAdminUp(vppIntf string) error {
 }
 
 // VppSetInterfaceL2Bridge requests bridge mode for interface
-func VppSetInterfaceL2Bridge(id string, interfaceType int, tunnelIfIndex uint32, shg uint8) error {
+func VppSetInterfaceL2Bridge(id string, interfaceType int, vppIntf string, tunnelIfIndex uint32, shg uint8) error {
 	bdid := vppBridgeByID[id].bridgeID
 	switch interfaceType {
 	case 0:
@@ -111,12 +111,13 @@ func VppSetInterfaceL2Bridge(id string, interfaceType int, tunnelIfIndex uint32,
 			return err
 		}
 	case 1:
-		err := vpp_set_interface_l2_bridge(bdid, tunnelIfIndex, shg)
+		intfIndex := tunnelIfIndex
+		err := vpp_set_interface_l2_bridge(bdid, intfIndex, shg)
 		if err != nil {
 			return err
 		}
 	default:
-		return error.New("Unkonwn interface type")
+		return errors.New("Unkonwn interface type")
 	}
 	return nil
 }
@@ -211,15 +212,6 @@ func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error
 
 	ch := conn.NewApiChannel()
 	defer ch.Close()
-
-	_, ok := vppBridgeByID[id]
-	if !ok {
-		return errors.New("govpp: vpp_set_interface_l2_bridge: ID not found in vppBridgeByID")
-	}
-	_, ok = vppIntfByName[vppIntf]
-	if !ok {
-		return errors.New("Interface not found in vppIntfByName")
-	}
 
 	req := &vpe.SwInterfaceSetL2Bridge{
 		RxSwIfIndex: intfIndex,

@@ -312,8 +312,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # create an interface for etcd cluster
             node.vm.network :private_network, ip: node_addr, virtualbox__intnet: "true", auto_config: false
             # create an interface for bridged network
-            node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: network_name, auto_config: false
-            node.vm.network :private_network, ip: "0.0.0.0", virtualbox__intnet: "contiv_purple", auto_config: false
+            node.vm.network :private_network, ip: "192.168.10.0", virtualbox__intnet: "true", auto_config: false
+            node.vm.network :private_network, ip: "192.168.20.0", virtualbox__intnet: "true", auto_config: false
             node.vm.provider "virtualbox" do |v|
                 customize(v, :id)
                 v.customize ['modifyvm', :id, '--nictype2', '82545EM']

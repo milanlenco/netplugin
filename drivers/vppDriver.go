@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
+	"net"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,6 +12,7 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	"github.com/contiv/netplugin/netplugin/nameserver"
 	"github.com/contiv/netplugin/utils/netutils"
+	"github.com/contiv/objdb"
 	govpp "github.com/fdio-stack/govpp/srv"
 	netlink "github.com/vishvananda/netlink"
 )
@@ -24,13 +24,16 @@ type VppDriverOperState struct {
 	core.CommonState
 }
 
+var defaultDbURL = "etcd://127.0.0.1:2379"
+
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	vppOper    VppDriverOperState // Oper state of the driver
-	localIP    string             // Local IP address
-	lock       sync.Mutex         // lock for modifying shared state
-	nameServer *nameserver.NetpluginNameServer
+	vppOper     VppDriverOperState              // Oper state of the driver
+	localIP     string                          // Local IP address
+	lock        sync.Mutex                      // lock for modifying shared state
+	nameServer  *nameserver.NetpluginNameServer // nameServer
+	objdbClient objdb.API                       // Objdb client
 }
 
 // Write the state
@@ -78,6 +81,12 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 			return err
 		}
 	}
+
+	d.objdbClient, err = objdb.NewClient(defaultDbURL)
+	if err != nil {
+		log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
+	}
+
 	log.Infof("Initializing vpp driver")
 	govpp.VppConnect()
 	return nil
@@ -102,34 +111,60 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	if err != nil {
 		return err
 	}
-	localIP := d.localIP
-	clusterIP := strings.Split(os.Getenv("CLUSTER_NODE_IPS"), ",")
+	// localIP := d.localIP
+	// clusterIP, err := d.objdbClient.GetService("netplugin.vtep")
+	// if err != nil {
+	// 	log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
+	// }
+
+	// for _, nodeIP := range clusterIP {
+	// 	if nodeIP.HostAddr != localIP {
+	// 		tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP.HostAddr).To4(), uint32(cfgNw.ExtPktTag))
+	// 		if err != nil {
+	// 			log.Infof("Could not create vxlan tunnel")
+	// 			return err
+	// 		}
+	// 		err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
+	// 		if err != nil {
+	// 			log.Errorf("Error adding interface to bridge domain, Err: %v", err)
+	// 			return err
+	// 		}
+	// 	}
+	// }
+
+	var localIP string
+	if d.localIP == "192.168.2.10" {
+		localIP = "192.168.10.10"
+	} else {
+		localIP = "192.168.10.11"
+	}
+	clusterIP := []string{"192.168.10.10", "192.168.10.11"}
+
 	for _, nodeIP := range clusterIP {
 		if nodeIP != localIP {
-			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, []byte(localIP), []byte(nodeIP), uint32(cfgNw.ExtPktTag))
+			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
 			if err != nil {
 				log.Infof("Could not create vxlan tunnel")
 				return err
 			}
-			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(0))
+			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
 			if err != nil {
 				log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 				return err
 			}
 		}
-
 	}
+
 	return nil
 }
 
 // DeleteNetwork deletes a network for a given ID from VPP
 func (d *VppDriver) DeleteNetwork(id string, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
 	isAdd := 0
-	bdID, err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd))
+	err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd))
 	if err != nil {
 		return err
 	}
-	log.Infof("VPP Bridge domain  with id: %d, successfully deleted", bdID)
 	return nil
 }
 
@@ -296,36 +331,36 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 
 // CreateRemoteEndpoint is not implemented.
 func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	var err error
-	operEp := &VppOperEndpointState{}
-	operEp.StateDriver = d.vppOper.StateDriver
-	err = operEp.Read(id)
-	if err != nil {
-		return err
-	}
+	// var err error
+	// operEp := &VppOperEndpointState{}
+	// operEp.StateDriver = d.vppOper.StateDriver
+	// err = operEp.Read(id)
+	// if err != nil {
+	// 	return err
+	// }
 
-	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.vppOper.StateDriver
-	err = cfgNw.Read(operEp.NetID)
-	if err != nil {
-		log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
-		return err
-	}
-	isAdd := uint8(1)
-	isIPv6 := uint8(0)
-	srcAddr := []byte(operEp.VtepIP)
-	dstAddr := []byte(d.localIP)
-	vni := uint32(cfgNw.ExtPktTag)
-	shg := uint8(1)
-	tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
-	if err != nil {
-		return err
-	}
-	err = govpp.VppSetInterfaceL2Bridge(id, string(tunnelIfIndex), shg)
-	if err != nil {
-		return err
-	}
-	return nil
+	// cfgNw := mastercfg.CfgNetworkState{}
+	// cfgNw.StateDriver = d.vppOper.StateDriver
+	// err = cfgNw.Read(operEp.NetID)
+	// if err != nil {
+	// 	log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
+	// 	return err
+	// }
+	// isAdd := uint8(1)
+	// isIPv6 := uint8(0)
+	// srcAddr := []byte(operEp.VtepIP)
+	// dstAddr := []byte(d.localIP)
+	// vni := uint32(cfgNw.ExtPktTag)
+	// shg := uint8(1)
+	// tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = govpp.VppSetInterfaceL2Bridge(id, string(tunnelIfIndex), shg)
+	// if err != nil {
+	// 	return err
+	// }
+	return core.Errorf("Not implemented")
 }
 
 // DeleteRemoteEndpoint is not implemented.
@@ -403,7 +438,7 @@ func (d *VppDriver) addVppIntf(id string, intfName string) error {
 		log.Errorf("Error setting the vpp-side interface state to up, Err: %v", err)
 		return err
 	}
-	err = govpp.VppSetInterfaceL2Bridge(id, vppIntfName, 0, uint8(0))
+	err = govpp.VppSetInterfaceL2Bridge(id, 0, vppIntfName, uint32(0), uint8(0))
 	if err != nil {
 		log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 		return err

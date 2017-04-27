@@ -11,8 +11,9 @@
             ["u64", "key"],
             ["u8", "socket_filename", 128],
             ["u32", "ring_size"],
+            ["u16", "buffer_size"],
             ["u8", "hw_addr", 6],
-            {"crc" : "0xd407f0c7"}
+            {"crc" : "0x23fe3309"}
         ],
         ["memif_create_reply",
             ["u16", "_vl_msg_id"],
@@ -44,9 +45,10 @@
             ["u8", "role"],
             ["u8", "socket_filename", 128],
             ["u32", "ring_size"],
+            ["u16", "buffer_size"],
             ["u8", "admin_up_down"],
             ["u8", "link_up_down"],
-            {"crc" : "0x5b4aada8"}
+            {"crc" : "0xcf105583"}
         ],
         ["memif_dump",
             ["u16", "_vl_msg_id"],
@@ -55,5 +57,5 @@
             {"crc" : "0x68d39e95"}
         ]
     ],
-"vl_api_version" :"0x93b504b3"
+"vl_api_version" :"0xadb63e82"
 }

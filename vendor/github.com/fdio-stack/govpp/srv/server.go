@@ -10,9 +10,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/fdio-stack/govpp"
 	"github.com/fdio-stack/govpp/api"
-	"github.com/fdio-stack/govpp/messages/go/acl"
-	"github.com/fdio-stack/govpp/messages/go/interfaces"
-	"github.com/fdio-stack/govpp/messages/go/vpe"
+	"github.com/fdio-stack/govpp/core/bin_api/acl"
+	"github.com/fdio-stack/govpp/core/bin_api/interfaces"
+	"github.com/fdio-stack/govpp/core/bin_api/vpe"
 )
 
 type vppBridgeDomain struct {
@@ -85,6 +85,15 @@ func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8) error {
 // VppAddInterface creates an af_packet interface in VPP
 func VppAddInterface(vppIntf string) error {
 	err := vpp_add_af_packet_interface(vppIntf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// VppAddInterface creates an af_packet interface in VPP
+func VppDelInterface(vppIntf string) error {
+	err := vpp_del_af_packet_interface(vppIntf)
 	if err != nil {
 		return err
 	}
@@ -173,10 +182,10 @@ func vpp_connect() {
 
 func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 
-	conn := govpp.Connect()
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	req := &vpe.BridgeDomainAddDel{
@@ -207,10 +216,10 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 }
 
 func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error {
-	conn := govpp.Connect()
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	req := &vpe.SwInterfaceSetL2Bridge{
@@ -244,10 +253,10 @@ func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error
  */
 
 func vpp_add_af_packet_interface(vppIntf string) error {
-	conn := govpp.Connect()
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	req := &vpe.AfPacketCreate{
@@ -276,11 +285,38 @@ func vpp_add_af_packet_interface(vppIntf string) error {
 	return nil
 }
 
-func vpp_set_vpp_interface_adminup(vppIntf string) error {
-	conn := govpp.Connect()
+func vpp_del_af_packet_interface(vppIntf string) error {
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
+	defer ch.Close()
+
+	req := &vpe.AfPacketDelete{
+		HostIfName: []byte(vppIntf),
+	}
+
+	// send the request - channel API instead of SendRequest
+	ch.ReqChan <- &api.VppRequest{Message: req}
+
+	// receive the response - channel API instead of ReceiveReply
+	vppReply := <-ch.ReplyChan
+	reply := &vpe.AfPacketDeleteReply{}
+	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+
+	if reply.Retval != 0 {
+		return errors.New("Could not delete ad_packet interface")
+	}
+
+	delete(vppIntfByName, vppIntf)
+	return nil
+}
+
+func vpp_set_vpp_interface_adminup(vppIntf string) error {
+	conn, _ := govpp.Connect()
+	defer conn.Disconnect()
+
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	_, ok := vppIntfByName[vppIntf]
@@ -317,10 +353,10 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
 
 func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	dstAddr []byte, vni uint32) (uint32, error) {
-	conn := govpp.Connect()
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	req := &vpe.VxlanAddDelTunnel{
@@ -355,10 +391,10 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
  */
 
 func vpp_acl_add_replace_rule(vppRule *acl.ACLRule) error {
-	conn := govpp.Connect()
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	req := &acl.ACLAddReplace{
@@ -400,10 +436,10 @@ func vpp_acl_add_replace_rule(vppRule *acl.ACLRule) error {
 }
 
 func vpp_acl_del_rule(vppRule *acl.ACLRule) error {
-	conn := govpp.Connect()
+	conn, _ := govpp.Connect()
 	defer conn.Disconnect()
 
-	ch := conn.NewApiChannel()
+	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
 	req := &acl.ACLDel{

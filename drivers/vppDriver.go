@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
+	"net"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,7 +12,7 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	"github.com/contiv/netplugin/netplugin/nameserver"
 	"github.com/contiv/netplugin/utils/netutils"
-	govpp "github.com/fdio-stack/govpp/srv"
+	govpp "github.com/fdio-stack/govpp"
 	netlink "github.com/vishvananda/netlink"
 )
 
@@ -103,10 +102,10 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		return err
 	}
 	localIP := d.localIP
-	clusterIP := strings.Split(os.Getenv("CLUSTER_NODE_IPS"), ",")
+	clusterIP := []string{"192.168.2.10", "192.168.2.11"}
 	for _, nodeIP := range clusterIP {
 		if nodeIP != localIP {
-			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, []byte(localIP), []byte(nodeIP), uint32(cfgNw.ExtPktTag))
+			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
 			if err != nil {
 				log.Infof("Could not create vxlan tunnel")
 				return err
@@ -125,11 +124,10 @@ func (d *VppDriver) CreateNetwork(id string) error {
 // DeleteNetwork deletes a network for a given ID from VPP
 func (d *VppDriver) DeleteNetwork(id string, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
 	isAdd := 0
-	bdID, err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd))
+	err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd))
 	if err != nil {
 		return err
 	}
-	log.Infof("VPP Bridge domain  with id: %d, successfully deleted", bdID)
 	return nil
 }
 
@@ -296,36 +294,36 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 
 // CreateRemoteEndpoint is not implemented.
 func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	var err error
-	operEp := &VppOperEndpointState{}
-	operEp.StateDriver = d.vppOper.StateDriver
-	err = operEp.Read(id)
-	if err != nil {
-		return err
-	}
+	// var err error
+	// operEp := &VppOperEndpointState{}
+	// operEp.StateDriver = d.vppOper.StateDriver
+	// err = operEp.Read(id)
+	// if err != nil {
+	// 	return err
+	// }
 
-	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.vppOper.StateDriver
-	err = cfgNw.Read(operEp.NetID)
-	if err != nil {
-		log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
-		return err
-	}
-	isAdd := uint8(1)
-	isIPv6 := uint8(0)
-	srcAddr := []byte(operEp.VtepIP)
-	dstAddr := []byte(d.localIP)
-	vni := uint32(cfgNw.ExtPktTag)
-	shg := uint8(1)
-	tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
-	if err != nil {
-		return err
-	}
-	err = govpp.VppSetInterfaceL2Bridge(id, string(tunnelIfIndex), shg)
-	if err != nil {
-		return err
-	}
-	return nil
+	// cfgNw := mastercfg.CfgNetworkState{}
+	// cfgNw.StateDriver = d.vppOper.StateDriver
+	// err = cfgNw.Read(operEp.NetID)
+	// if err != nil {
+	// 	log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
+	// 	return err
+	// }
+	// isAdd := uint8(1)
+	// isIPv6 := uint8(0)
+	// srcAddr := []byte(operEp.VtepIP)
+	// dstAddr := []byte(d.localIP)
+	// vni := uint32(cfgNw.ExtPktTag)
+	// shg := uint8(1)
+	// tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = govpp.VppSetInterfaceL2Bridge(id, string(tunnelIfIndex), shg)
+	// if err != nil {
+	// 	return err
+	// }
+	return core.Errorf("Not implemented")
 }
 
 // DeleteRemoteEndpoint is not implemented.
@@ -403,7 +401,7 @@ func (d *VppDriver) addVppIntf(id string, intfName string) error {
 		log.Errorf("Error setting the vpp-side interface state to up, Err: %v", err)
 		return err
 	}
-	err = govpp.VppSetInterfaceL2Bridge(id, vppIntfName, 0, uint8(0))
+	err = govpp.VppSetInterfaceL2Bridge(id, 0, vppIntfName, uint32(0), uint8(0))
 	if err != nil {
 		log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 		return err

@@ -360,11 +360,12 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	defer ch.Close()
 
 	req := &vpe.VxlanAddDelTunnel{
-		IsAdd:      isAdd,
-		IsIpv6:     isIPv6,
-		SrcAddress: srcAddr,
-		DstAddress: dstAddr,
-		Vni:        vni,
+		IsAdd:          isAdd,
+		IsIpv6:         isIPv6,
+		SrcAddress:     srcAddr,
+		DstAddress:     dstAddr,
+		DecapNextIndex: 0xffffffff,
+		Vni:            vni,
 	}
 
 	// send the request - channel API instead of SendRequest

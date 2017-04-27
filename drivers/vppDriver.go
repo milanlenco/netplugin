@@ -12,7 +12,8 @@ import (
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 	"github.com/contiv/netplugin/netplugin/nameserver"
 	"github.com/contiv/netplugin/utils/netutils"
-	govpp "github.com/fdio-stack/govpp"
+	"github.com/contiv/objdb"
+	govpp "github.com/fdio-stack/govpp/srv"
 	netlink "github.com/vishvananda/netlink"
 )
 
@@ -23,13 +24,16 @@ type VppDriverOperState struct {
 	core.CommonState
 }
 
+var defaultDbURL = "etcd://127.0.0.1:2379"
+
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	vppOper    VppDriverOperState // Oper state of the driver
-	localIP    string             // Local IP address
-	lock       sync.Mutex         // lock for modifying shared state
-	nameServer *nameserver.NetpluginNameServer
+	vppOper     VppDriverOperState              // Oper state of the driver
+	localIP     string                          // Local IP address
+	lock        sync.Mutex                      // lock for modifying shared state
+	nameServer  *nameserver.NetpluginNameServer // nameServer
+	objdbClient objdb.API                       // Objdb client
 }
 
 // Write the state
@@ -77,6 +81,12 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 			return err
 		}
 	}
+
+	d.objdbClient, err = objdb.NewClient(defaultDbURL)
+	if err != nil {
+		log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
+	}
+
 	log.Infof("Initializing vpp driver")
 	govpp.VppConnect()
 	return nil
@@ -101,23 +111,45 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	if err != nil {
 		return err
 	}
+
 	localIP := d.localIP
-	clusterIP := []string{"192.168.2.10", "192.168.2.11"}
+	localIP = changeSubbnet(localIP)
+	clusterIP, err := d.objdbClient.GetService("netplugin.vtep")
+	if err != nil {
+		log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
+	}
+
 	for _, nodeIP := range clusterIP {
-		if nodeIP != localIP {
-			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
+		nodeIP.HostAddr = changeSubbnet(nodeIP.HostAddr)
+		if nodeIP.HostAddr != localIP {
+			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP.HostAddr).To4(), uint32(cfgNw.ExtPktTag))
 			if err != nil {
 				log.Infof("Could not create vxlan tunnel")
 				return err
 			}
-			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(0))
+			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
 			if err != nil {
 				log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 				return err
 			}
 		}
-
 	}
+
+	// for _, nodeIP := range clusterIP {
+	// 	if nodeIP != localIP {
+	// 		tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
+	// 		if err != nil {
+	// 			log.Infof("Could not create vxlan tunnel")
+	// 			return err
+	// 		}
+	// 		err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
+	// 		if err != nil {
+	// 			log.Errorf("Error adding interface to bridge domain, Err: %v", err)
+	// 			return err
+	// 		}
+	// 	}
+	// }
+
 	return nil
 }
 
@@ -167,7 +199,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		return err
 	}
 
-	// Ask VPP to create the interface. Part is to create a veth pair.
+	// Create veth pair and add afpacket interface in VPP.
 	networkID := cfgNw.CommonState.ID
 	err = d.addVppIntf(networkID, intfName)
 	if err != nil {
@@ -210,7 +242,35 @@ func (d *VppDriver) UpdateEndpointGroup(id string) error {
 
 // DeleteEndpoint is not implemented.
 func (d *VppDriver) DeleteEndpoint(id string) (err error) {
-	return core.Errorf("Not implemented")
+	operEp := VppOperEndpointState{}
+	operEp.StateDriver = d.vppOper.StateDriver
+	err := epOper.Read(id)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		operEp.Clear()
+	}()
+
+	// Get the network state
+	cfgNw := mastercfg.CfgNetworkState{}
+	cfgNw.StateDriver = d.oper.StateDriver
+	err = cfgNw.Read(epOper.NetID)
+	if err != nil {
+		return err
+	}
+
+	skipVethPair := (cfgNw.NwType == "infra")
+	err = sw.DeletePort(&epOper, skipVethPair)
+	if err != nil {
+		log.Errorf("Error deleting endpoint: %+v. Err: %v", epOper, err)
+	}
+
+	d.oper.localEpInfoMutex.Lock()
+	delete(d.oper.LocalEpInfo, id)
+	d.oper.localEpInfoMutex.Unlock()
+
+	return nil
 }
 
 // CreateHostAccPort is not implemented.
@@ -407,4 +467,11 @@ func (d *VppDriver) addVppIntf(id string, intfName string) error {
 		return err
 	}
 	return nil
+}
+
+func changeSubbnet(ip string) string {
+	newIP := net.ParseIP(ip)
+	newIP = newIP.To4()
+	newIP[2]++
+	return string(newIP)
 }

@@ -15,16 +15,30 @@ import (
 	"time"
 	"unicode"
 
+	"bytes"
+
 	"github.com/bennyscetbun/jsongo"
 )
 
+// MessageType represents the type of a VPP message.
+type messageType int
+
 const (
-	inputFileExt = ".json" // filename extension of files that should be processed as the input
+	requestMessage messageType = iota // VPP request message
+	replyMessage                      // VPP reply message
+	otherMessage                      // other VPP message
+)
+
+const (
+	apiImportPath = "github.com/fdio-stack/govpp/api" // import path of the govpp API
+	inputFileExt  = ".json"                           // filename extension of files that should be processed as the input
 )
 
 // context is a structure storing details of a particular code generation task
 type context struct {
 	inputFile   string            // file with input JSON data
+	inputBuff   *bytes.Buffer     // contents of the input file
+	inputLine   int               // currently processed line in the input file
 	outputFile  string            // file with output data
 	packageName string            // name of the Go package being generated
 	packageDir  string            // directory where the package source files are located
@@ -89,9 +103,15 @@ func generateFromFile(inputFile, outputDir string) error {
 	if err != nil {
 		return err
 	}
+	// read the file
+	inputData, err := readFile(inputFile)
+	if err != nil {
+		return err
+	}
+	ctx.inputBuff = bytes.NewBuffer(inputData)
 
-	// read JSON file
-	jsonRoot, err := readJSON(inputFile)
+	// parse JSON
+	jsonRoot, err := parseJSON(inputData)
 	if err != nil {
 		return err
 	}
@@ -143,16 +163,23 @@ func getContext(inputFile, outputDir string) (*context, error) {
 	return ctx, nil
 }
 
-// readJSON parses a JSON file into memory
-func readJSON(inputFile string) (*jsongo.JSONNode, error) {
-	root := jsongo.JSONNode{}
+// readFile reads content of a file into memory
+func readFile(inputFile string) ([]byte, error) {
 
 	inputData, err := ioutil.ReadFile(inputFile)
+
 	if err != nil {
-		return nil, fmt.Errorf("reading from JSON file failed: %v", err)
+		return nil, fmt.Errorf("reading data from file failed: %v", err)
 	}
 
-	err = json.Unmarshal(inputData, &root)
+	return inputData, nil
+}
+
+// parseJSON parses a JSON data into an in-memory tree
+func parseJSON(inputData []byte) (*jsongo.JSONNode, error) {
+	root := jsongo.JSONNode{}
+
+	err := json.Unmarshal(inputData, &root)
 	if err != nil {
 		return nil, fmt.Errorf("JSON unmarshall failed: %v", err)
 	}
@@ -208,8 +235,9 @@ func generateMessage(ctx *context, w io.Writer, msg *jsongo.JSONNode, isType boo
 	}
 	structName := camelCaseName(strings.Title(msgName))
 
-	// generate struct fields into the slice
+	// generate struct fields into the slice & determine message type
 	fields := make([]string, 0)
+	msgType := otherMessage
 	for j := 0; j < msg.Len(); j++ {
 		if jsongo.TypeArray == msg.At(j).GetType() {
 			fld := msg.At(j)
@@ -217,11 +245,24 @@ func generateMessage(ctx *context, w io.Writer, msg *jsongo.JSONNode, isType boo
 			if err != nil {
 				return err
 			}
+			// determine whether ths is a request / reply / other message
+			if j == 2 {
+				fieldName, ok := fld.At(1).Get().(string)
+				if ok {
+					if fieldName == "client_index" {
+						msgType = requestMessage
+					} else if fieldName == "context" {
+						msgType = replyMessage
+					} else {
+						msgType = otherMessage
+					}
+				}
+			}
 		}
 	}
 
 	// generate struct comment
-	generateMessageComment(w, structName, msgName, isType)
+	generateMessageComment(ctx, w, structName, msgName, isType)
 
 	// generate struct header
 	fmt.Fprintln(w, "type", structName, "struct {")
@@ -241,10 +282,20 @@ func generateMessage(ctx *context, w io.Writer, msg *jsongo.JSONNode, isType boo
 		generateMessageNameGetter(w, structName, msgName)
 	}
 
+	// generate message type getter method
+	if !isType {
+		generateMessageTypeGetter(w, structName, msgType)
+	}
+
 	// generate CRC getter
 	crcIf := msg.At(msg.Len() - 1).At("crc").Get()
 	if crc, ok := crcIf.(string); ok {
 		generateCrcGetter(w, structName, crc)
+	}
+
+	// generate message factory
+	if !isType {
+		generateMessageFactory(w, structName)
 	}
 
 	// if this is a type, save it in the map for later use
@@ -260,7 +311,6 @@ func processMessageField(ctx *context, fields *[]string, fld *jsongo.JSONNode) e
 	if fld.Len() < 2 || fld.At(0).GetType() != jsongo.TypeValue || fld.At(1).GetType() != jsongo.TypeValue {
 		return errors.New("invalid JSON for message field specified")
 	}
-
 	fieldVppType, ok := fld.At(0).Get().(string)
 	if !ok {
 		return fmt.Errorf("invalid JSON for message specified, field type is %T, not a string", fld.At(0).Get())
@@ -272,7 +322,10 @@ func processMessageField(ctx *context, fields *[]string, fld *jsongo.JSONNode) e
 
 	// skip internal fields
 	fieldNameLower := strings.ToLower(fieldName)
-	if fieldNameLower == "crc" || fieldNameLower == "_vl_msg_id" || fieldNameLower == "client_index" || fieldNameLower == "context" {
+	if fieldNameLower == "crc" || fieldNameLower == "_vl_msg_id" {
+		return nil
+	}
+	if len(*fields) == 0 && (fieldNameLower == "client_index" || fieldNameLower == "context") {
 		return nil
 	}
 
@@ -281,12 +334,12 @@ func processMessageField(ctx *context, fields *[]string, fld *jsongo.JSONNode) e
 
 	fieldStr := ""
 	isArray := false
-	arrayDimension := 0
+	arraySize := 0
 
 	fieldStr += "\t" + fieldName + " "
 	if fld.Len() > 2 {
 		isArray = true
-		arrayDimension = int(fld.At(2).Get().(float64))
+		arraySize = int(fld.At(2).Get().(float64))
 		fieldStr += "[]"
 	}
 
@@ -294,11 +347,22 @@ func processMessageField(ctx *context, fields *[]string, fld *jsongo.JSONNode) e
 	fieldStr += dataType
 
 	if isArray {
-		if arrayDimension == 0 {
-			// write to previous one
-			(*fields)[len(*fields)-1] += fmt.Sprintf("\t`struc:\"sizeof=%s\"`", fieldName)
+		if arraySize == 0 {
+			// variable sized array
+			if fld.Len() > 3 {
+				// array size is specified by another field
+				arraySizeField := string(fld.At(3).Get().(string))
+				arraySizeField = camelCaseName(strings.Title(arraySizeField))
+				// find & update the field that specifies the array size
+				for i, f := range *fields {
+					if strings.Contains(f, fmt.Sprintf("\t%s ", arraySizeField)) {
+						(*fields)[i] += fmt.Sprintf("\t`struc:\"sizeof=%s\"`", fieldName)
+					}
+				}
+			}
 		} else {
-			fieldStr += fmt.Sprintf("\t`struc:\"[%d]%s\"`", arrayDimension, dataType)
+			// fixed size array
+			fieldStr += fmt.Sprintf("\t`struc:\"[%d]%s\"`", arraySize, dataType)
 		}
 	}
 
@@ -308,10 +372,12 @@ func processMessageField(ctx *context, fields *[]string, fld *jsongo.JSONNode) e
 
 // generatePackageHeader generates package header into provider writer
 func generatePackageHeader(ctx *context, w io.Writer, rootNode *jsongo.JSONNode) {
-	fmt.Fprintln(w, "// Package "+ctx.packageName+" provides the Go interface to VPP binary API of the "+ctx.packageName+" VPP module.")
-	fmt.Fprintln(w, "// Generated from '"+filepath.Base(ctx.inputFile)+"' on "+time.Now().Format(time.RFC1123)+".")
+	fmt.Fprintln(w, "// Package "+ctx.packageName+" represents the VPP binary API of the '"+ctx.packageName+"' VPP module.")
+	fmt.Fprintln(w, "// DO NOT EDIT. Generated from '"+ctx.inputFile+"' on "+time.Now().Format(time.RFC1123)+".")
 
 	fmt.Fprintln(w, "package "+ctx.packageName)
+
+	fmt.Fprintln(w, "import \""+apiImportPath+"\"")
 
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "// VlApiVersion contains version of the API.")
@@ -323,34 +389,80 @@ func generatePackageHeader(ctx *context, w io.Writer, rootNode *jsongo.JSONNode)
 }
 
 // generateMessageComment generates comment for a message into provider writer
-func generateMessageComment(w io.Writer, structName string, msgName string, isType bool) {
+func generateMessageComment(ctx *context, w io.Writer, structName string, msgName string, isType bool) {
 	fmt.Fprintln(w)
 	if isType {
-		fmt.Fprintln(w, "// "+structName+" is the Go representation of the VPP binary API data type '"+msgName+"'.")
+		fmt.Fprintln(w, "// "+structName+" represents the VPP binary API data type '"+msgName+"'.")
 	} else {
-		fmt.Fprintln(w, "// "+structName+" is the Go representation of the VPP binary API message '"+msgName+"'.")
+		fmt.Fprintln(w, "// "+structName+" represents the VPP binary API message '"+msgName+"'.")
 	}
+
+	// print out the source of the generated message - the JSON
+	msgFound := false
+	for {
+		lineBuff, err := ctx.inputBuff.ReadBytes('\n')
+		if err != nil {
+			break
+		}
+		ctx.inputLine++
+		line := string(lineBuff)
+
+		if !msgFound {
+			if strings.Contains(line, msgName) {
+				fmt.Fprintf(w, "// Generated from '%s', line %d:\n", ctx.inputFile, ctx.inputLine)
+				fmt.Fprintln(w, "//")
+				fmt.Fprint(w, "//", line)
+				msgFound = true
+			}
+		} else {
+			fmt.Fprint(w, "//", line)
+			if len(strings.Trim(line, " ")) < 4 {
+				break // end of the message in JSON
+			}
+		}
+	}
+	fmt.Fprintln(w, "//")
 }
 
-// generateMessageNameGetter generates getter for original VPP message name into provider writer
+// generateMessageNameGetter generates getter for original VPP message name into the provider writer
 func generateMessageNameGetter(w io.Writer, structName string, msgName string) {
 	fmt.Fprintln(w, "func (*"+structName+") GetMessageName() string {")
 	fmt.Fprintln(w, "\treturn \""+msgName+"\"")
 	fmt.Fprintln(w, "}")
 }
 
-// generateTypeNameGetter generates getter for original VPP type name into provider writer
+// generateTypeNameGetter generates getter for original VPP type name into the provider writer
 func generateTypeNameGetter(w io.Writer, structName string, msgName string) {
 	fmt.Fprintln(w, "func (*"+structName+") GetTypeName() string {")
 	fmt.Fprintln(w, "\treturn \""+msgName+"\"")
 	fmt.Fprintln(w, "}")
 }
 
-// generateCrcGetter generates getter for CRC checksum of the message definition into provider writer
+// generateMessageTypeGetter generates message factory for the generated message into the provider writer
+func generateMessageTypeGetter(w io.Writer, structName string, msgType messageType) {
+	fmt.Fprintln(w, "func (*"+structName+") GetMessageType() api.MessageType {")
+	if msgType == requestMessage {
+		fmt.Fprintln(w, "\treturn api.RequestMessage")
+	} else if msgType == replyMessage {
+		fmt.Fprintln(w, "\treturn api.ReplyMessage")
+	} else {
+		fmt.Fprintln(w, "\treturn api.OtherMessage")
+	}
+	fmt.Fprintln(w, "}")
+}
+
+// generateCrcGetter generates getter for CRC checksum of the message definition into the provider writer
 func generateCrcGetter(w io.Writer, structName string, crc string) {
 	crc = strings.TrimPrefix(crc, "0x")
 	fmt.Fprintln(w, "func (*"+structName+") GetCrcString() string {")
 	fmt.Fprintln(w, "\treturn \""+crc+"\"")
+	fmt.Fprintln(w, "}")
+}
+
+// generateMessageFactory generates message factory for the generated message into the provider writer
+func generateMessageFactory(w io.Writer, structName string) {
+	fmt.Fprintln(w, "func New"+structName+"() api.Message {")
+	fmt.Fprintln(w, "\treturn &"+structName+"{}")
 	fmt.Fprintln(w, "}")
 }
 

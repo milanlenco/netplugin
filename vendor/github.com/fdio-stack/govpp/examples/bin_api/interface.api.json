@@ -62,6 +62,7 @@
             ["u16", "link_mtu"],
             ["u32", "sub_id"],
             ["u8", "sub_dot1ad"],
+            ["u8", "sub_dot1ah"],
             ["u8", "sub_number_of_tags"],
             ["u16", "sub_outer_vlan_id"],
             ["u16", "sub_inner_vlan_id"],
@@ -74,7 +75,12 @@
             ["u32", "vtr_tag1"],
             ["u32", "vtr_tag2"],
             ["u8", "tag", 64],
-            {"crc" : "0xbe58e53e"}
+            ["u16", "outer_tag"],
+            ["u8", "b_dmac", 6],
+            ["u8", "b_smac", 6],
+            ["u16", "b_vlanid"],
+            ["u32", "i_sid"],
+            {"crc" : "0xe2d855bb"}
         ],
         ["sw_interface_dump",
             ["u16", "_vl_msg_id"],
@@ -185,5 +191,5 @@
             {"crc" : "0x761cbcb0"}
         ]
     ],
-"vl_api_version" :"0x92be38ed"
+"vl_api_version" :"0x6857f668"
 }

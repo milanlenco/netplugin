@@ -1,14 +1,14 @@
 // Package vpe represents the VPP binary API of the 'vpe' VPP module.
-// DO NOT EDIT. Generated from '/usr/share/vpp/api/vpe.api.json' on Thu, 27 Apr 2017 11:34:11 CEST.
+// DO NOT EDIT. Generated from '/usr/share/vpp/api//vpe.api.json' on Fri, 28 Apr 2017 17:43:59 UTC.
 package vpe
 
-import "gitlab.cisco.com/ctao/vnf-agent/tricorder/govpp/api"
+import "github.com/fdio-stack/govpp/api"
 
 // VlApiVersion contains version of the API.
-const VlAPIVersion = 0xd3bcc288
+const VlAPIVersion = 0x0a33c8f7
 
 // IP4FibCounter represents the VPP binary API data type 'ip4_fib_counter'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 3:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 3:
 //
 //        ["ip4_fib_counter",
 //            ["u32", "address"],
@@ -33,7 +33,7 @@ func (*IP4FibCounter) GetCrcString() string {
 }
 
 // IP4NbrCounter represents the VPP binary API data type 'ip4_nbr_counter'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 10:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 10:
 //
 //        ["ip4_nbr_counter",
 //            ["u32", "address"],
@@ -58,7 +58,7 @@ func (*IP4NbrCounter) GetCrcString() string {
 }
 
 // IP6FibCounter represents the VPP binary API data type 'ip6_fib_counter'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 17:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 17:
 //
 //        ["ip6_fib_counter",
 //            ["u64", "address", 2],
@@ -83,7 +83,7 @@ func (*IP6FibCounter) GetCrcString() string {
 }
 
 // IP6NbrCounter represents the VPP binary API data type 'ip6_nbr_counter'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 24:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 24:
 //
 //        ["ip6_nbr_counter",
 //            ["u64", "address", 2],
@@ -108,7 +108,7 @@ func (*IP6NbrCounter) GetCrcString() string {
 }
 
 // CreateVlanSubif represents the VPP binary API message 'create_vlan_subif'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 33:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 33:
 //
 //        ["create_vlan_subif",
 //            ["u16", "_vl_msg_id"],
@@ -138,7 +138,7 @@ func NewCreateVlanSubif() api.Message {
 }
 
 // CreateVlanSubifReply represents the VPP binary API message 'create_vlan_subif_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 41:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 41:
 //
 //        ["create_vlan_subif_reply",
 //            ["u16", "_vl_msg_id"],
@@ -167,7 +167,7 @@ func NewCreateVlanSubifReply() api.Message {
 }
 
 // SwInterfaceSetMplsEnable represents the VPP binary API message 'sw_interface_set_mpls_enable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 48:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 48:
 //
 //        ["sw_interface_set_mpls_enable",
 //            ["u16", "_vl_msg_id"],
@@ -197,7 +197,7 @@ func NewSwInterfaceSetMplsEnable() api.Message {
 }
 
 // SwInterfaceSetMplsEnableReply represents the VPP binary API message 'sw_interface_set_mpls_enable_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 56:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 56:
 //
 //        ["sw_interface_set_mpls_enable_reply",
 //            ["u16", "_vl_msg_id"],
@@ -224,7 +224,7 @@ func NewSwInterfaceSetMplsEnableReply() api.Message {
 }
 
 // ProxyArpAddDel represents the VPP binary API message 'proxy_arp_add_del'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 62:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 62:
 //
 //        ["proxy_arp_add_del",
 //            ["u16", "_vl_msg_id"],
@@ -258,7 +258,7 @@ func NewProxyArpAddDel() api.Message {
 }
 
 // ProxyArpAddDelReply represents the VPP binary API message 'proxy_arp_add_del_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 72:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 72:
 //
 //        ["proxy_arp_add_del_reply",
 //            ["u16", "_vl_msg_id"],
@@ -285,7 +285,7 @@ func NewProxyArpAddDelReply() api.Message {
 }
 
 // ProxyArpIntfcEnableDisable represents the VPP binary API message 'proxy_arp_intfc_enable_disable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 78:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 78:
 //
 //        ["proxy_arp_intfc_enable_disable",
 //            ["u16", "_vl_msg_id"],
@@ -315,7 +315,7 @@ func NewProxyArpIntfcEnableDisable() api.Message {
 }
 
 // ProxyArpIntfcEnableDisableReply represents the VPP binary API message 'proxy_arp_intfc_enable_disable_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 86:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 86:
 //
 //        ["proxy_arp_intfc_enable_disable_reply",
 //            ["u16", "_vl_msg_id"],
@@ -342,7 +342,7 @@ func NewProxyArpIntfcEnableDisableReply() api.Message {
 }
 
 // ResetVrf represents the VPP binary API message 'reset_vrf'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 92:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 92:
 //
 //        ["reset_vrf",
 //            ["u16", "_vl_msg_id"],
@@ -372,7 +372,7 @@ func NewResetVrf() api.Message {
 }
 
 // ResetVrfReply represents the VPP binary API message 'reset_vrf_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 100:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 100:
 //
 //        ["reset_vrf_reply",
 //            ["u16", "_vl_msg_id"],
@@ -399,7 +399,7 @@ func NewResetVrfReply() api.Message {
 }
 
 // IsAddressReachable represents the VPP binary API message 'is_address_reachable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 106:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 106:
 //
 //        ["is_address_reachable",
 //            ["u16", "_vl_msg_id"],
@@ -435,7 +435,7 @@ func NewIsAddressReachable() api.Message {
 }
 
 // WantStats represents the VPP binary API message 'want_stats'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 117:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 117:
 //
 //        ["want_stats",
 //            ["u16", "_vl_msg_id"],
@@ -465,7 +465,7 @@ func NewWantStats() api.Message {
 }
 
 // WantStatsReply represents the VPP binary API message 'want_stats_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 125:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 125:
 //
 //        ["want_stats_reply",
 //            ["u16", "_vl_msg_id"],
@@ -492,7 +492,7 @@ func NewWantStatsReply() api.Message {
 }
 
 // VnetIP4FibCounters represents the VPP binary API message 'vnet_ip4_fib_counters'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 131:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 131:
 //
 //        ["vnet_ip4_fib_counters",
 //            ["u16", "_vl_msg_id"],
@@ -522,7 +522,7 @@ func NewVnetIP4FibCounters() api.Message {
 }
 
 // VnetIP4NbrCounters represents the VPP binary API message 'vnet_ip4_nbr_counters'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 138:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 138:
 //
 //        ["vnet_ip4_nbr_counters",
 //            ["u16", "_vl_msg_id"],
@@ -554,7 +554,7 @@ func NewVnetIP4NbrCounters() api.Message {
 }
 
 // VnetIP6FibCounters represents the VPP binary API message 'vnet_ip6_fib_counters'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 146:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 146:
 //
 //        ["vnet_ip6_fib_counters",
 //            ["u16", "_vl_msg_id"],
@@ -584,7 +584,7 @@ func NewVnetIP6FibCounters() api.Message {
 }
 
 // VnetIP6NbrCounters represents the VPP binary API message 'vnet_ip6_nbr_counters'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 153:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 153:
 //
 //        ["vnet_ip6_nbr_counters",
 //            ["u16", "_vl_msg_id"],
@@ -616,7 +616,7 @@ func NewVnetIP6NbrCounters() api.Message {
 }
 
 // VnetGetSummaryStats represents the VPP binary API message 'vnet_get_summary_stats'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 161:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 161:
 //
 //        ["vnet_get_summary_stats",
 //            ["u16", "_vl_msg_id"],
@@ -642,7 +642,7 @@ func NewVnetGetSummaryStats() api.Message {
 }
 
 // VnetSummaryStatsReply represents the VPP binary API message 'vnet_summary_stats_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 167:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 167:
 //
 //        ["vnet_summary_stats_reply",
 //            ["u16", "_vl_msg_id"],
@@ -675,7 +675,7 @@ func NewVnetSummaryStatsReply() api.Message {
 }
 
 // OamEvent represents the VPP binary API message 'oam_event'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 176:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 176:
 //
 //        ["oam_event",
 //            ["u16", "_vl_msg_id"],
@@ -703,7 +703,7 @@ func NewOamEvent() api.Message {
 }
 
 // WantOamEvents represents the VPP binary API message 'want_oam_events'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 182:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 182:
 //
 //        ["want_oam_events",
 //            ["u16", "_vl_msg_id"],
@@ -733,7 +733,7 @@ func NewWantOamEvents() api.Message {
 }
 
 // WantOamEventsReply represents the VPP binary API message 'want_oam_events_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 190:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 190:
 //
 //        ["want_oam_events_reply",
 //            ["u16", "_vl_msg_id"],
@@ -760,7 +760,7 @@ func NewWantOamEventsReply() api.Message {
 }
 
 // OamAddDel represents the VPP binary API message 'oam_add_del'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 196:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 196:
 //
 //        ["oam_add_del",
 //            ["u16", "_vl_msg_id"],
@@ -794,7 +794,7 @@ func NewOamAddDel() api.Message {
 }
 
 // OamAddDelReply represents the VPP binary API message 'oam_add_del_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 206:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 206:
 //
 //        ["oam_add_del_reply",
 //            ["u16", "_vl_msg_id"],
@@ -821,7 +821,7 @@ func NewOamAddDelReply() api.Message {
 }
 
 // ResetFib represents the VPP binary API message 'reset_fib'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 212:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 212:
 //
 //        ["reset_fib",
 //            ["u16", "_vl_msg_id"],
@@ -851,7 +851,7 @@ func NewResetFib() api.Message {
 }
 
 // ResetFibReply represents the VPP binary API message 'reset_fib_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 220:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 220:
 //
 //        ["reset_fib_reply",
 //            ["u16", "_vl_msg_id"],
@@ -878,7 +878,7 @@ func NewResetFibReply() api.Message {
 }
 
 // CreateLoopback represents the VPP binary API message 'create_loopback'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 226:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 226:
 //
 //        ["create_loopback",
 //            ["u16", "_vl_msg_id"],
@@ -906,7 +906,7 @@ func NewCreateLoopback() api.Message {
 }
 
 // CreateLoopbackReply represents the VPP binary API message 'create_loopback_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 233:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 233:
 //
 //        ["create_loopback_reply",
 //            ["u16", "_vl_msg_id"],
@@ -935,7 +935,7 @@ func NewCreateLoopbackReply() api.Message {
 }
 
 // CreateLoopbackInstance represents the VPP binary API message 'create_loopback_instance'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 240:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 240:
 //
 //        ["create_loopback_instance",
 //            ["u16", "_vl_msg_id"],
@@ -967,7 +967,7 @@ func NewCreateLoopbackInstance() api.Message {
 }
 
 // CreateLoopbackInstanceReply represents the VPP binary API message 'create_loopback_instance_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 249:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 249:
 //
 //        ["create_loopback_instance_reply",
 //            ["u16", "_vl_msg_id"],
@@ -996,7 +996,7 @@ func NewCreateLoopbackInstanceReply() api.Message {
 }
 
 // DeleteLoopback represents the VPP binary API message 'delete_loopback'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 256:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 256:
 //
 //        ["delete_loopback",
 //            ["u16", "_vl_msg_id"],
@@ -1024,7 +1024,7 @@ func NewDeleteLoopback() api.Message {
 }
 
 // DeleteLoopbackReply represents the VPP binary API message 'delete_loopback_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 263:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 263:
 //
 //        ["delete_loopback_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1051,7 +1051,7 @@ func NewDeleteLoopbackReply() api.Message {
 }
 
 // ControlPing represents the VPP binary API message 'control_ping'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 269:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 269:
 //
 //        ["control_ping",
 //            ["u16", "_vl_msg_id"],
@@ -1077,7 +1077,7 @@ func NewControlPing() api.Message {
 }
 
 // ControlPingReply represents the VPP binary API message 'control_ping_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 275:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 275:
 //
 //        ["control_ping_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1108,7 +1108,7 @@ func NewControlPingReply() api.Message {
 }
 
 // CliRequest represents the VPP binary API message 'cli_request'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 283:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 283:
 //
 //        ["cli_request",
 //            ["u16", "_vl_msg_id"],
@@ -1136,7 +1136,7 @@ func NewCliRequest() api.Message {
 }
 
 // CliInband represents the VPP binary API message 'cli_inband'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 290:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 290:
 //
 //        ["cli_inband",
 //            ["u16", "_vl_msg_id"],
@@ -1166,7 +1166,7 @@ func NewCliInband() api.Message {
 }
 
 // CliReply represents the VPP binary API message 'cli_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 298:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 298:
 //
 //        ["cli_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1195,7 +1195,7 @@ func NewCliReply() api.Message {
 }
 
 // CliInbandReply represents the VPP binary API message 'cli_inband_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 305:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 305:
 //
 //        ["cli_inband_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1226,7 +1226,7 @@ func NewCliInbandReply() api.Message {
 }
 
 // SetArpNeighborLimit represents the VPP binary API message 'set_arp_neighbor_limit'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 313:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 313:
 //
 //        ["set_arp_neighbor_limit",
 //            ["u16", "_vl_msg_id"],
@@ -1256,7 +1256,7 @@ func NewSetArpNeighborLimit() api.Message {
 }
 
 // SetArpNeighborLimitReply represents the VPP binary API message 'set_arp_neighbor_limit_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 321:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 321:
 //
 //        ["set_arp_neighbor_limit_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1283,7 +1283,7 @@ func NewSetArpNeighborLimitReply() api.Message {
 }
 
 // L2PatchAddDel represents the VPP binary API message 'l2_patch_add_del'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 327:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 327:
 //
 //        ["l2_patch_add_del",
 //            ["u16", "_vl_msg_id"],
@@ -1315,7 +1315,7 @@ func NewL2PatchAddDel() api.Message {
 }
 
 // L2PatchAddDelReply represents the VPP binary API message 'l2_patch_add_del_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 336:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 336:
 //
 //        ["l2_patch_add_del_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1342,7 +1342,7 @@ func NewL2PatchAddDelReply() api.Message {
 }
 
 // SwInterfaceSetVpath represents the VPP binary API message 'sw_interface_set_vpath'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 342:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 342:
 //
 //        ["sw_interface_set_vpath",
 //            ["u16", "_vl_msg_id"],
@@ -1372,7 +1372,7 @@ func NewSwInterfaceSetVpath() api.Message {
 }
 
 // SwInterfaceSetVpathReply represents the VPP binary API message 'sw_interface_set_vpath_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 350:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 350:
 //
 //        ["sw_interface_set_vpath_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1399,7 +1399,7 @@ func NewSwInterfaceSetVpathReply() api.Message {
 }
 
 // SwInterfaceSetL2Xconnect represents the VPP binary API message 'sw_interface_set_l2_xconnect'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 356:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 356:
 //
 //        ["sw_interface_set_l2_xconnect",
 //            ["u16", "_vl_msg_id"],
@@ -1431,7 +1431,7 @@ func NewSwInterfaceSetL2Xconnect() api.Message {
 }
 
 // SwInterfaceSetL2XconnectReply represents the VPP binary API message 'sw_interface_set_l2_xconnect_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 365:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 365:
 //
 //        ["sw_interface_set_l2_xconnect_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1458,7 +1458,7 @@ func NewSwInterfaceSetL2XconnectReply() api.Message {
 }
 
 // SwInterfaceSetL2Bridge represents the VPP binary API message 'sw_interface_set_l2_bridge'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 371:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 371:
 //
 //        ["sw_interface_set_l2_bridge",
 //            ["u16", "_vl_msg_id"],
@@ -1494,7 +1494,7 @@ func NewSwInterfaceSetL2Bridge() api.Message {
 }
 
 // SwInterfaceSetL2BridgeReply represents the VPP binary API message 'sw_interface_set_l2_bridge_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 382:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 382:
 //
 //        ["sw_interface_set_l2_bridge_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1521,7 +1521,7 @@ func NewSwInterfaceSetL2BridgeReply() api.Message {
 }
 
 // BdIPMacAddDel represents the VPP binary API message 'bd_ip_mac_add_del'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 388:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 388:
 //
 //        ["bd_ip_mac_add_del",
 //            ["u16", "_vl_msg_id"],
@@ -1557,7 +1557,7 @@ func NewBdIPMacAddDel() api.Message {
 }
 
 // BdIPMacAddDelReply represents the VPP binary API message 'bd_ip_mac_add_del_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 399:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 399:
 //
 //        ["bd_ip_mac_add_del_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1584,7 +1584,7 @@ func NewBdIPMacAddDelReply() api.Message {
 }
 
 // ClassifySetInterfaceIPTable represents the VPP binary API message 'classify_set_interface_ip_table'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 405:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 405:
 //
 //        ["classify_set_interface_ip_table",
 //            ["u16", "_vl_msg_id"],
@@ -1616,7 +1616,7 @@ func NewClassifySetInterfaceIPTable() api.Message {
 }
 
 // ClassifySetInterfaceIPTableReply represents the VPP binary API message 'classify_set_interface_ip_table_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 414:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 414:
 //
 //        ["classify_set_interface_ip_table_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1643,7 +1643,7 @@ func NewClassifySetInterfaceIPTableReply() api.Message {
 }
 
 // ClassifySetInterfaceL2Tables represents the VPP binary API message 'classify_set_interface_l2_tables'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 420:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 420:
 //
 //        ["classify_set_interface_l2_tables",
 //            ["u16", "_vl_msg_id"],
@@ -1679,7 +1679,7 @@ func NewClassifySetInterfaceL2Tables() api.Message {
 }
 
 // ClassifySetInterfaceL2TablesReply represents the VPP binary API message 'classify_set_interface_l2_tables_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 431:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 431:
 //
 //        ["classify_set_interface_l2_tables_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1706,7 +1706,7 @@ func NewClassifySetInterfaceL2TablesReply() api.Message {
 }
 
 // GetNodeIndex represents the VPP binary API message 'get_node_index'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 437:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 437:
 //
 //        ["get_node_index",
 //            ["u16", "_vl_msg_id"],
@@ -1734,7 +1734,7 @@ func NewGetNodeIndex() api.Message {
 }
 
 // GetNodeIndexReply represents the VPP binary API message 'get_node_index_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 444:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 444:
 //
 //        ["get_node_index_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1763,7 +1763,7 @@ func NewGetNodeIndexReply() api.Message {
 }
 
 // AddNodeNext represents the VPP binary API message 'add_node_next'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 451:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 451:
 //
 //        ["add_node_next",
 //            ["u16", "_vl_msg_id"],
@@ -1793,7 +1793,7 @@ func NewAddNodeNext() api.Message {
 }
 
 // AddNodeNextReply represents the VPP binary API message 'add_node_next_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 459:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 459:
 //
 //        ["add_node_next_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1822,7 +1822,7 @@ func NewAddNodeNextReply() api.Message {
 }
 
 // L2InterfaceEfpFilter represents the VPP binary API message 'l2_interface_efp_filter'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 466:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 466:
 //
 //        ["l2_interface_efp_filter",
 //            ["u16", "_vl_msg_id"],
@@ -1852,7 +1852,7 @@ func NewL2InterfaceEfpFilter() api.Message {
 }
 
 // L2InterfaceEfpFilterReply represents the VPP binary API message 'l2_interface_efp_filter_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 474:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 474:
 //
 //        ["l2_interface_efp_filter_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1879,7 +1879,7 @@ func NewL2InterfaceEfpFilterReply() api.Message {
 }
 
 // CreateSubif represents the VPP binary API message 'create_subif'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 480:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 480:
 //
 //        ["create_subif",
 //            ["u16", "_vl_msg_id"],
@@ -1929,7 +1929,7 @@ func NewCreateSubif() api.Message {
 }
 
 // CreateSubifReply represents the VPP binary API message 'create_subif_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 498:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 498:
 //
 //        ["create_subif_reply",
 //            ["u16", "_vl_msg_id"],
@@ -1958,7 +1958,7 @@ func NewCreateSubifReply() api.Message {
 }
 
 // ShowVersion represents the VPP binary API message 'show_version'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 505:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 505:
 //
 //        ["show_version",
 //            ["u16", "_vl_msg_id"],
@@ -1984,7 +1984,7 @@ func NewShowVersion() api.Message {
 }
 
 // ShowVersionReply represents the VPP binary API message 'show_version_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 511:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 511:
 //
 //        ["show_version_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2019,7 +2019,7 @@ func NewShowVersionReply() api.Message {
 }
 
 // InterfaceNameRenumber represents the VPP binary API message 'interface_name_renumber'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 521:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 521:
 //
 //        ["interface_name_renumber",
 //            ["u16", "_vl_msg_id"],
@@ -2049,7 +2049,7 @@ func NewInterfaceNameRenumber() api.Message {
 }
 
 // InterfaceNameRenumberReply represents the VPP binary API message 'interface_name_renumber_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 529:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 529:
 //
 //        ["interface_name_renumber_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2076,7 +2076,7 @@ func NewInterfaceNameRenumberReply() api.Message {
 }
 
 // WantIP4ArpEvents represents the VPP binary API message 'want_ip4_arp_events'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 535:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 535:
 //
 //        ["want_ip4_arp_events",
 //            ["u16", "_vl_msg_id"],
@@ -2108,7 +2108,7 @@ func NewWantIP4ArpEvents() api.Message {
 }
 
 // WantIP4ArpEventsReply represents the VPP binary API message 'want_ip4_arp_events_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 544:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 544:
 //
 //        ["want_ip4_arp_events_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2135,7 +2135,7 @@ func NewWantIP4ArpEventsReply() api.Message {
 }
 
 // IP4ArpEvent represents the VPP binary API message 'ip4_arp_event'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 550:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 550:
 //
 //        ["ip4_arp_event",
 //            ["u16", "_vl_msg_id"],
@@ -2171,7 +2171,7 @@ func NewIP4ArpEvent() api.Message {
 }
 
 // WantIP6NdEvents represents the VPP binary API message 'want_ip6_nd_events'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 561:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 561:
 //
 //        ["want_ip6_nd_events",
 //            ["u16", "_vl_msg_id"],
@@ -2203,7 +2203,7 @@ func NewWantIP6NdEvents() api.Message {
 }
 
 // WantIP6NdEventsReply represents the VPP binary API message 'want_ip6_nd_events_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 570:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 570:
 //
 //        ["want_ip6_nd_events_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2230,7 +2230,7 @@ func NewWantIP6NdEventsReply() api.Message {
 }
 
 // IP6NdEvent represents the VPP binary API message 'ip6_nd_event'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 576:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 576:
 //
 //        ["ip6_nd_event",
 //            ["u16", "_vl_msg_id"],
@@ -2266,7 +2266,7 @@ func NewIP6NdEvent() api.Message {
 }
 
 // InputACLSetInterface represents the VPP binary API message 'input_acl_set_interface'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 587:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 587:
 //
 //        ["input_acl_set_interface",
 //            ["u16", "_vl_msg_id"],
@@ -2302,7 +2302,7 @@ func NewInputACLSetInterface() api.Message {
 }
 
 // InputACLSetInterfaceReply represents the VPP binary API message 'input_acl_set_interface_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 598:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 598:
 //
 //        ["input_acl_set_interface_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2329,7 +2329,7 @@ func NewInputACLSetInterfaceReply() api.Message {
 }
 
 // GetNodeGraph represents the VPP binary API message 'get_node_graph'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 604:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 604:
 //
 //        ["get_node_graph",
 //            ["u16", "_vl_msg_id"],
@@ -2355,7 +2355,7 @@ func NewGetNodeGraph() api.Message {
 }
 
 // GetNodeGraphReply represents the VPP binary API message 'get_node_graph_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 610:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 610:
 //
 //        ["get_node_graph_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2384,7 +2384,7 @@ func NewGetNodeGraphReply() api.Message {
 }
 
 // IoamEnable represents the VPP binary API message 'ioam_enable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 617:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 617:
 //
 //        ["ioam_enable",
 //            ["u16", "_vl_msg_id"],
@@ -2422,7 +2422,7 @@ func NewIoamEnable() api.Message {
 }
 
 // IoamEnableReply represents the VPP binary API message 'ioam_enable_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 629:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 629:
 //
 //        ["ioam_enable_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2449,7 +2449,7 @@ func NewIoamEnableReply() api.Message {
 }
 
 // IoamDisable represents the VPP binary API message 'ioam_disable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 635:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 635:
 //
 //        ["ioam_disable",
 //            ["u16", "_vl_msg_id"],
@@ -2477,7 +2477,7 @@ func NewIoamDisable() api.Message {
 }
 
 // IoamDisableReply represents the VPP binary API message 'ioam_disable_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 642:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 642:
 //
 //        ["ioam_disable_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2504,7 +2504,7 @@ func NewIoamDisableReply() api.Message {
 }
 
 // GetNextIndex represents the VPP binary API message 'get_next_index'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 648:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 648:
 //
 //        ["get_next_index",
 //            ["u16", "_vl_msg_id"],
@@ -2534,7 +2534,7 @@ func NewGetNextIndex() api.Message {
 }
 
 // GetNextIndexReply represents the VPP binary API message 'get_next_index_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 656:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 656:
 //
 //        ["get_next_index_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2563,7 +2563,7 @@ func NewGetNextIndexReply() api.Message {
 }
 
 // PgCreateInterface represents the VPP binary API message 'pg_create_interface'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 663:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 663:
 //
 //        ["pg_create_interface",
 //            ["u16", "_vl_msg_id"],
@@ -2591,7 +2591,7 @@ func NewPgCreateInterface() api.Message {
 }
 
 // PgCreateInterfaceReply represents the VPP binary API message 'pg_create_interface_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 670:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 670:
 //
 //        ["pg_create_interface_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2620,7 +2620,7 @@ func NewPgCreateInterfaceReply() api.Message {
 }
 
 // PgCapture represents the VPP binary API message 'pg_capture'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 677:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 677:
 //
 //        ["pg_capture",
 //            ["u16", "_vl_msg_id"],
@@ -2656,7 +2656,7 @@ func NewPgCapture() api.Message {
 }
 
 // PgCaptureReply represents the VPP binary API message 'pg_capture_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 688:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 688:
 //
 //        ["pg_capture_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2683,7 +2683,7 @@ func NewPgCaptureReply() api.Message {
 }
 
 // PgEnableDisable represents the VPP binary API message 'pg_enable_disable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 694:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 694:
 //
 //        ["pg_enable_disable",
 //            ["u16", "_vl_msg_id"],
@@ -2715,7 +2715,7 @@ func NewPgEnableDisable() api.Message {
 }
 
 // PgEnableDisableReply represents the VPP binary API message 'pg_enable_disable_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 703:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 703:
 //
 //        ["pg_enable_disable_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2742,7 +2742,7 @@ func NewPgEnableDisableReply() api.Message {
 }
 
 // IPSourceAndPortRangeCheckAddDel represents the VPP binary API message 'ip_source_and_port_range_check_add_del'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 709:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 709:
 //
 //        ["ip_source_and_port_range_check_add_del",
 //            ["u16", "_vl_msg_id"],
@@ -2784,7 +2784,7 @@ func NewIPSourceAndPortRangeCheckAddDel() api.Message {
 }
 
 // IPSourceAndPortRangeCheckAddDelReply represents the VPP binary API message 'ip_source_and_port_range_check_add_del_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 723:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 723:
 //
 //        ["ip_source_and_port_range_check_add_del_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2811,7 +2811,7 @@ func NewIPSourceAndPortRangeCheckAddDelReply() api.Message {
 }
 
 // IPSourceAndPortRangeCheckInterfaceAddDel represents the VPP binary API message 'ip_source_and_port_range_check_interface_add_del'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 729:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 729:
 //
 //        ["ip_source_and_port_range_check_interface_add_del",
 //            ["u16", "_vl_msg_id"],
@@ -2849,7 +2849,7 @@ func NewIPSourceAndPortRangeCheckInterfaceAddDel() api.Message {
 }
 
 // IPSourceAndPortRangeCheckInterfaceAddDelReply represents the VPP binary API message 'ip_source_and_port_range_check_interface_add_del_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 741:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 741:
 //
 //        ["ip_source_and_port_range_check_interface_add_del_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2876,7 +2876,7 @@ func NewIPSourceAndPortRangeCheckInterfaceAddDelReply() api.Message {
 }
 
 // DeleteSubif represents the VPP binary API message 'delete_subif'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 747:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 747:
 //
 //        ["delete_subif",
 //            ["u16", "_vl_msg_id"],
@@ -2904,7 +2904,7 @@ func NewDeleteSubif() api.Message {
 }
 
 // DeleteSubifReply represents the VPP binary API message 'delete_subif_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 754:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 754:
 //
 //        ["delete_subif_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2931,7 +2931,7 @@ func NewDeleteSubifReply() api.Message {
 }
 
 // Punt represents the VPP binary API message 'punt'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 760:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 760:
 //
 //        ["punt",
 //            ["u16", "_vl_msg_id"],
@@ -2965,7 +2965,7 @@ func NewPunt() api.Message {
 }
 
 // PuntReply represents the VPP binary API message 'punt_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 770:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 770:
 //
 //        ["punt_reply",
 //            ["u16", "_vl_msg_id"],
@@ -2992,7 +2992,7 @@ func NewPuntReply() api.Message {
 }
 
 // FeatureEnableDisable represents the VPP binary API message 'feature_enable_disable'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 776:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 776:
 //
 //        ["feature_enable_disable",
 //            ["u16", "_vl_msg_id"],
@@ -3026,7 +3026,7 @@ func NewFeatureEnableDisable() api.Message {
 }
 
 // FeatureEnableDisableReply represents the VPP binary API message 'feature_enable_disable_reply'.
-// Generated from '/usr/share/vpp/api/vpe.api.json', line 786:
+// Generated from '/usr/share/vpp/api//vpe.api.json', line 786:
 //
 //        ["feature_enable_disable_reply",
 //            ["u16", "_vl_msg_id"],

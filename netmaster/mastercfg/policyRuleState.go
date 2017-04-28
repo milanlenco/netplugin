@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/contiv/netplugin/core"
-	vppPolicy "github.com/fdio-stack/govpp/messages/go/acl"
+	vppPolicy "github.com/fdio-stack/govpp/core/bin_api/acl"
 )
 
 const (

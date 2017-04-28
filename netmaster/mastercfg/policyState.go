@@ -25,7 +25,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	contivModel "github.com/contiv/contivmodel"
 	"github.com/contiv/netplugin/core"
-	vppPolicy "github.com/fdio-stack/govpp/messages/go/acl"
+	vppPolicy "github.com/fdio-stack/govpp/core/bin_api/acl"
 	govpp "github.com/fdio-stack/govpp/srv"
 )
 

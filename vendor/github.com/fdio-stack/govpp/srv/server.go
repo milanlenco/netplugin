@@ -11,8 +11,11 @@ import (
 	"github.com/fdio-stack/govpp"
 	"github.com/fdio-stack/govpp/api"
 	"github.com/fdio-stack/govpp/core/bin_api/acl"
+	"github.com/fdio-stack/govpp/core/bin_api/af_packet"
 	"github.com/fdio-stack/govpp/core/bin_api/interfaces"
+	"github.com/fdio-stack/govpp/core/bin_api/l2"
 	"github.com/fdio-stack/govpp/core/bin_api/vpe"
+	"github.com/fdio-stack/govpp/core/bin_api/vxlan"
 )
 
 type vppBridgeDomain struct {
@@ -91,7 +94,7 @@ func VppAddInterface(vppIntf string) error {
 	return nil
 }
 
-// VppAddInterface creates an af_packet interface in VPP
+// VppDelInterface creates an af_packet interface in VPP
 func VppDelInterface(vppIntf string) error {
 	err := vpp_del_af_packet_interface(vppIntf)
 	if err != nil {
@@ -188,7 +191,7 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
-	req := &vpe.BridgeDomainAddDel{
+	req := &l2.BridgeDomainAddDel{
 		BdID:    bdid,
 		Flood:   1,
 		UuFlood: 1,
@@ -205,8 +208,8 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
-	reply := &vpe.BridgeDomainAddDelReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	reply := &l2.BridgeDomainAddDelReply{}
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not add/del bridge domain")
@@ -236,7 +239,7 @@ func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
 	reply := &vpe.SwInterfaceSetL2BridgeReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not set bridge mode for interface")
@@ -259,7 +262,7 @@ func vpp_add_af_packet_interface(vppIntf string) error {
 	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
-	req := &vpe.AfPacketCreate{
+	req := &af_packet.AfPacketCreate{
 		HostIfName:      []byte(vppIntf),
 		UseRandomHwAddr: 1,
 	}
@@ -269,8 +272,8 @@ func vpp_add_af_packet_interface(vppIntf string) error {
 
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
-	reply := &vpe.AfPacketCreateReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	reply := &af_packet.AfPacketCreateReply{}
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not add ad_packet interface")
@@ -292,7 +295,7 @@ func vpp_del_af_packet_interface(vppIntf string) error {
 	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
-	req := &vpe.AfPacketDelete{
+	req := &af_packet.AfPacketDelete{
 		HostIfName: []byte(vppIntf),
 	}
 
@@ -301,8 +304,8 @@ func vpp_del_af_packet_interface(vppIntf string) error {
 
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
-	reply := &vpe.AfPacketDeleteReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	reply := &af_packet.AfPacketDeleteReply{}
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not delete ad_packet interface")
@@ -335,7 +338,7 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
 	reply := &interfaces.SwInterfaceSetFlagsReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not add set af_packet interface flag, admin state up")
@@ -359,7 +362,7 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	ch, _ := conn.NewAPIChannel()
 	defer ch.Close()
 
-	req := &vpe.VxlanAddDelTunnel{
+	req := &vxlan.VxlanAddDelTunnel{
 		IsAdd:          isAdd,
 		IsIpv6:         isIPv6,
 		SrcAddress:     srcAddr,
@@ -373,8 +376,8 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
-	reply := &vpe.VxlanAddDelTunnelReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	reply := &vxlan.VxlanAddDelTunnelReply{}
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {
@@ -423,7 +426,7 @@ func vpp_acl_add_replace_rule(vppRule *acl.ACLRule) error {
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
 	reply := &acl.ACLAddReplaceReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {
@@ -453,7 +456,7 @@ func vpp_acl_del_rule(vppRule *acl.ACLRule) error {
 	// receive the response - channel API instead of ReceiveReply
 	vppReply := <-ch.ReplyChan
 	reply := &acl.ACLDelReply{}
-	ch.Decoder.DecodeMsg(vppReply.Data, reply)
+	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {

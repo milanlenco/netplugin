@@ -22,6 +22,8 @@ type vppOper int
 // VppDriverOperState carries operational state of the VppDriver.
 type VppDriverOperState struct {
 	core.CommonState
+	LocalEpInfo      map[string]*EpInfo `json:"LocalEpInfo"` // info about local endpoints
+	localEpInfoMutex sync.Mutex
 }
 
 var defaultDbURL = "etcd://127.0.0.1:2379"
@@ -82,6 +84,25 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 		}
 	}
 
+	// create local endpoint info map
+	d.vppOper.LocalEpInfo = make(map[string]*EpInfo)
+
+	// write the oper
+	err = d.vppOper.Write()
+	if err != nil {
+		return err
+	}
+
+	// make sure LocalEpInfo exists
+	if d.vppOper.LocalEpInfo == nil {
+		d.vppOper.LocalEpInfo = make(map[string]*EpInfo)
+		// write the oper
+		err = d.vppOper.Write()
+		if err != nil {
+			return err
+		}
+	}
+
 	d.objdbClient, err = objdb.NewClient(defaultDbURL)
 	if err != nil {
 		log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
@@ -112,32 +133,17 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		return err
 	}
 
-	localIP := d.localIP
-	localIP = changeSubbnet(localIP)
-	clusterIP, err := d.objdbClient.GetService("netplugin.vtep")
-	if err != nil {
-		log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
-	}
-
-	for _, nodeIP := range clusterIP {
-		nodeIP.HostAddr = changeSubbnet(nodeIP.HostAddr)
-		if nodeIP.HostAddr != localIP {
-			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP.HostAddr).To4(), uint32(cfgNw.ExtPktTag))
-			if err != nil {
-				log.Infof("Could not create vxlan tunnel")
-				return err
-			}
-			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
-			if err != nil {
-				log.Errorf("Error adding interface to bridge domain, Err: %v", err)
-				return err
-			}
-		}
-	}
+	// localIP := d.localIP
+	// localIP = changeSubbnet(localIP)
+	// clusterIP, err := d.objdbClient.GetService("netplugin.vtep")
+	// if err != nil {
+	// 	log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
+	// }
 
 	// for _, nodeIP := range clusterIP {
-	// 	if nodeIP != localIP {
-	// 		tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
+	// 	nodeIP.HostAddr = changeSubbnet(nodeIP.HostAddr)
+	// 	if nodeIP.HostAddr != localIP {
+	// 		tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP.HostAddr).To4(), uint32(cfgNw.ExtPktTag))
 	// 		if err != nil {
 	// 			log.Infof("Could not create vxlan tunnel")
 	// 			return err
@@ -149,6 +155,30 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	// 		}
 	// 	}
 	// }
+
+	localIP := d.localIP
+	if localIP != "192.168.2.10" {
+		localIP = "192.168.3.11"
+	} else {
+		localIP = "192.168.3.10"
+	}
+
+	clusterIP := []string{"192.168.3.10", "192.168.3.11"}
+
+	for _, nodeIP := range clusterIP {
+		if nodeIP != localIP {
+			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
+			if err != nil {
+				log.Infof("Could not create vxlan tunnel")
+				return err
+			}
+			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
+			if err != nil {
+				log.Errorf("Error adding interface to bridge domain, Err: %v", err)
+				return err
+			}
+		}
+	}
 
 	return nil
 }
@@ -244,7 +274,7 @@ func (d *VppDriver) UpdateEndpointGroup(id string) error {
 func (d *VppDriver) DeleteEndpoint(id string) (err error) {
 	operEp := VppOperEndpointState{}
 	operEp.StateDriver = d.vppOper.StateDriver
-	err := epOper.Read(id)
+	err = operEp.Read(id)
 	if err != nil {
 		return err
 	}
@@ -252,23 +282,21 @@ func (d *VppDriver) DeleteEndpoint(id string) (err error) {
 		operEp.Clear()
 	}()
 
-	// Get the network state
-	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.oper.StateDriver
-	err = cfgNw.Read(epOper.NetID)
+	link1 := operEp.PortName
+	link2 := fmt.Sprint("veth_" + link1)
+	err = netutils.DeleteVethPairVpp(link1, link2)
 	if err != nil {
-		return err
+		log.Errorf("Error deleting endpoint: %+v. Err: %v", operEp, err)
 	}
 
-	skipVethPair := (cfgNw.NwType == "infra")
-	err = sw.DeletePort(&epOper, skipVethPair)
+	err = govpp.VppDelInterface(operEp.PortName)
 	if err != nil {
-		log.Errorf("Error deleting endpoint: %+v. Err: %v", epOper, err)
+		log.Errorf("Error deleting endpoint: %+v. Err: %v", operEp, err)
 	}
 
-	d.oper.localEpInfoMutex.Lock()
-	delete(d.oper.LocalEpInfo, id)
-	d.oper.localEpInfoMutex.Unlock()
+	d.vppOper.localEpInfoMutex.Lock()
+	delete(d.vppOper.LocalEpInfo, id)
+	d.vppOper.localEpInfoMutex.Unlock()
 
 	return nil
 }
@@ -354,35 +382,6 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 
 // CreateRemoteEndpoint is not implemented.
 func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	// var err error
-	// operEp := &VppOperEndpointState{}
-	// operEp.StateDriver = d.vppOper.StateDriver
-	// err = operEp.Read(id)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// cfgNw := mastercfg.CfgNetworkState{}
-	// cfgNw.StateDriver = d.vppOper.StateDriver
-	// err = cfgNw.Read(operEp.NetID)
-	// if err != nil {
-	// 	log.Errorf("Unable to get network %s. Err: %v", operEp.NetID, err)
-	// 	return err
-	// }
-	// isAdd := uint8(1)
-	// isIPv6 := uint8(0)
-	// srcAddr := []byte(operEp.VtepIP)
-	// dstAddr := []byte(d.localIP)
-	// vni := uint32(cfgNw.ExtPktTag)
-	// shg := uint8(1)
-	// tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(isAdd, isIPv6, srcAddr, dstAddr, vni)
-	// if err != nil {
-	// 	return err
-	// }
-	// err = govpp.VppSetInterfaceL2Bridge(id, string(tunnelIfIndex), shg)
-	// if err != nil {
-	// 	return err
-	// }
 	return core.Errorf("Not implemented")
 }
 

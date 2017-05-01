@@ -74,18 +74,18 @@ func VppConnect() (*core.Connection, *api.Channel, error) {
 }
 
 // VppAddDelBridgeDomain creates a bridge domain inside VPP
-func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8) error {
+func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8, chann *api.Channel) error {
 	if isAdd == 1 {
 		vppBridge := vppBridgeDomain{
 			id, pktTag, false}
-		err := vpp_add_del_l2_bridge_domain(pktTag, isAdd)
+		err := vpp_add_del_l2_bridge_domain(pktTag, isAdd, chann)
 		if err != nil {
 			return err
 		}
 		vppBridgeByID[id] = &vppBridge
 		return nil
 	}
-	err := vpp_add_del_l2_bridge_domain(pktTag, isAdd)
+	err := vpp_add_del_l2_bridge_domain(pktTag, isAdd, chann)
 	if err != nil {
 		return err
 	}
@@ -121,18 +121,18 @@ func VppInterfaceAdminUp(vppIntf string) error {
 }
 
 // VppSetInterfaceL2Bridge requests bridge mode for interface
-func VppSetInterfaceL2Bridge(id string, interfaceType int, vppIntf string, tunnelIfIndex uint32, shg uint8) error {
+func VppSetInterfaceL2Bridge(id string, interfaceType int, vppIntf string, tunnelIfIndex uint32, shg uint8, chann *api.Channel) error {
 	bdid := vppBridgeByID[id].bridgeID
 	switch interfaceType {
 	case 0:
 		intfIndex := vppIntfByName[vppIntf].swIfIndex
-		err := vpp_set_interface_l2_bridge(bdid, intfIndex, shg)
+		err := vpp_set_interface_l2_bridge(bdid, intfIndex, shg, chann)
 		if err != nil {
 			return err
 		}
 	case 1:
 		intfIndex := tunnelIfIndex
-		err := vpp_set_interface_l2_bridge(bdid, intfIndex, shg)
+		err := vpp_set_interface_l2_bridge(bdid, intfIndex, shg, chann)
 		if err != nil {
 			return err
 		}
@@ -144,9 +144,9 @@ func VppSetInterfaceL2Bridge(id string, interfaceType int, vppIntf string, tunne
 
 // VppVxlanAddDelTunnel creates or deletes a VXLAN tunnel
 func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
-	dstAddr []byte, vni uint32) (uint32, error) {
+	dstAddr []byte, vni uint32, chann *api.Channel) (uint32, error) {
 	tunnelIfIndex, err := vpp_vxlan_add_del_tunnel(isAdd, isIPv6, srcAddr,
-		dstAddr, vni)
+		dstAddr, vni, chann)
 	if err != nil {
 		return 0, err
 	}
@@ -179,13 +179,7 @@ func VppACLDelRule(vppRule *acl.ACLRule) error {
  ***************************************************************
  */
 
-func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
-
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8, chann *api.Channel) error {
 
 	req := &l2.BridgeDomainAddDel{
 		BdID:    bdid,
@@ -200,12 +194,12 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 	// brecode - change to argument values
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &l2.BridgeDomainAddDelReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not add/del bridge domain")
@@ -214,12 +208,7 @@ func vpp_add_del_l2_bridge_domain(bdid uint32, isAdd uint8) error {
 	return nil
 }
 
-func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8, chann *api.Channel) error {
 
 	req := &vpe.SwInterfaceSetL2Bridge{
 		RxSwIfIndex: intfIndex,
@@ -230,12 +219,12 @@ func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8) error
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &vpe.SwInterfaceSetL2BridgeReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not set bridge mode for interface")
@@ -351,12 +340,7 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
  */
 
 func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
-	dstAddr []byte, vni uint32) (uint32, error) {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+	dstAddr []byte, vni uint32, chann *api.Channel) (uint32, error) {
 
 	req := &vxlan.VxlanAddDelTunnel{
 		IsAdd:          isAdd,
@@ -368,12 +352,12 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &vxlan.VxlanAddDelTunnelReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {

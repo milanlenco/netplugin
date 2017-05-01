@@ -154,8 +154,8 @@ func VppVxlanAddDelTunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
 }
 
 // VppACLAddReplaceRule adds/replaces a rule in VPP
-func VppACLAddReplaceRule(vppRule *acl.ACLRule) error {
-	err := vpp_acl_add_replace_rule(vppRule)
+func VppACLAddReplaceRule(vppRule *acl.ACLRule, chann *api.Channel) error {
+	err := vpp_acl_add_replace_rule(vppRule, chann)
 	if err != nil {
 		return err
 	}
@@ -163,8 +163,8 @@ func VppACLAddReplaceRule(vppRule *acl.ACLRule) error {
 }
 
 // VppACLDelRule deletes an ACL Rule in vpp
-func VppACLDelRule(vppRule *acl.ACLRule) error {
-	err := vpp_acl_del_rule(vppRule)
+func VppACLDelRule(vppRule *acl.ACLRule, chann *api.Channel) error {
+	err := vpp_acl_del_rule(vppRule, chann)
 	if err != nil {
 		return err
 	}

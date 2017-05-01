@@ -13,6 +13,8 @@ import (
 	"github.com/contiv/netplugin/netplugin/nameserver"
 	"github.com/contiv/netplugin/utils/netutils"
 	"github.com/contiv/objdb"
+	govppApi "github.com/fdio-stack/govpp/api"
+	govppCore "github.com/fdio-stack/govpp/core"
 	govpp "github.com/fdio-stack/govpp/srv"
 	netlink "github.com/vishvananda/netlink"
 )
@@ -115,11 +117,12 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	if err != nil {
 		log.Fatalf("Error connecting to data plane - VPP, Err: %v", err)
 	}
+	return nil
 }
 
 // Deinit is not implemented.
 func (d *VppDriver) Deinit() {
-	d.conn, _ = govppPkg.Disconnect()
+	//d.conn, _ = govpp.Disconnect()
 }
 
 // CreateNetwork creates a bridge domain network for a given ID in VPP
@@ -133,7 +136,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	}
 	isAdd := 1
 	log.Infof("Create net %+v \n", cfgNw)
-	err = govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), uint8(isAdd))
+	err = govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), uint8(isAdd), d.connChan)
 	if err != nil {
 		return err
 	}
@@ -172,12 +175,12 @@ func (d *VppDriver) CreateNetwork(id string) error {
 
 	for _, nodeIP := range clusterIP {
 		if nodeIP != localIP {
-			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag))
+			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag), d.connChan)
 			if err != nil {
 				log.Infof("Could not create vxlan tunnel")
 				return err
 			}
-			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1))
+			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1), d.connChan)
 			if err != nil {
 				log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 				return err
@@ -191,7 +194,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 // DeleteNetwork deletes a network for a given ID from VPP
 func (d *VppDriver) DeleteNetwork(id string, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
 	isAdd := 0
-	err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd))
+	err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd), d.connChan)
 	if err != nil {
 		return err
 	}
@@ -455,17 +458,17 @@ func (d *VppDriver) addVppIntf(id string, intfName string) error {
 		return err
 	}
 
-	err = govpp.VppAddInterface(vppIntfName)
+	err = govpp.VppAddInterface(vppIntfName, d.chann)
 	if err != nil {
 		log.Errorf("Error creating the vpp-side interface, Err: %v", err)
 		return err
 	}
-	err = govpp.VppInterfaceAdminUp(vppIntfName)
+	err = govpp.VppInterfaceAdminUp(vppIntfName, d.chann)
 	if err != nil {
 		log.Errorf("Error setting the vpp-side interface state to up, Err: %v", err)
 		return err
 	}
-	err = govpp.VppSetInterfaceL2Bridge(id, 0, vppIntfName, uint32(0), uint8(0))
+	err = govpp.VppSetInterfaceL2Bridge(id, 0, vppIntfName, uint32(0), uint8(0), d.chann)
 	if err != nil {
 		log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 		return err

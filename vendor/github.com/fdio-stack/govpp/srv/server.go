@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/fdio-stack/govpp"
 	"github.com/fdio-stack/govpp/api"
+	"github.com/fdio-stack/govpp/core"
 	"github.com/fdio-stack/govpp/core/bin_api/acl"
 	"github.com/fdio-stack/govpp/core/bin_api/af_packet"
 	"github.com/fdio-stack/govpp/core/bin_api/interfaces"
@@ -61,8 +61,16 @@ var vppRuleByID = make(map[string]*vppRuleT)
  */
 
 // VppConnect export the VPP connect function to the public
-func VppConnect() {
-	vpp_connect()
+func VppConnect() (*core.Connection, *api.Channel, error) {
+	conn, err := govpp.Connect()
+	if err != nil {
+		return nil, nil, err
+	}
+	chann, err := conn.NewAPIChannel()
+	if err != nil {
+		return nil, nil, err
+	}
+	return conn, chann, nil
 }
 
 // VppAddDelBridgeDomain creates a bridge domain inside VPP
@@ -161,18 +169,6 @@ func VppACLDelRule(vppRule *acl.ACLRule) error {
 		return err
 	}
 	return nil
-}
-
-/*
- ***************************************************************
-
- *** VPP Connect / Disconnect
-
- ***************************************************************
- */
-
-func vpp_connect() {
-	log.Infof("Connected to VPP driver")
 }
 
 /*

@@ -31,7 +31,9 @@ var defaultDbURL = "etcd://127.0.0.1:2379"
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	vppOper     VppDriverOperState              // Oper state of the driver
+	vppOper     VppDriverOperState // Oper state of the driver
+	conn        *govppCore.Connection
+	connChan    *govppApi.Channel
 	localIP     string                          // Local IP address
 	lock        sync.Mutex                      // lock for modifying shared state
 	nameServer  *nameserver.NetpluginNameServer // nameServer
@@ -109,12 +111,15 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	}
 
 	log.Infof("Initializing vpp driver")
-	govpp.VppConnect()
-	return nil
+	d.conn, d.connChan, err = govpp.VppConnect()
+	if err != nil {
+		log.Fatalf("Error connecting to data plane - VPP, Err: %v", err)
+	}
 }
 
 // Deinit is not implemented.
 func (d *VppDriver) Deinit() {
+	d.conn, _ = govppPkg.Disconnect()
 }
 
 // CreateNetwork creates a bridge domain network for a given ID in VPP

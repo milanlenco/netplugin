@@ -94,8 +94,8 @@ func VppAddDelBridgeDomain(id string, pktTag uint32, isAdd uint8, chann *api.Cha
 }
 
 // VppAddInterface creates an af_packet interface in VPP
-func VppAddInterface(vppIntf string) error {
-	err := vpp_add_af_packet_interface(vppIntf)
+func VppAddInterface(vppIntf string, chann *api.Channel) error {
+	err := vpp_add_af_packet_interface(vppIntf, chann)
 	if err != nil {
 		return err
 	}
@@ -103,8 +103,8 @@ func VppAddInterface(vppIntf string) error {
 }
 
 // VppDelInterface creates an af_packet interface in VPP
-func VppDelInterface(vppIntf string) error {
-	err := vpp_del_af_packet_interface(vppIntf)
+func VppDelInterface(vppIntf string, chann *api.Channel) error {
+	err := vpp_del_af_packet_interface(vppIntf, chann)
 	if err != nil {
 		return err
 	}
@@ -112,8 +112,8 @@ func VppDelInterface(vppIntf string) error {
 }
 
 // VppInterfaceAdminUp sets interface flags state up
-func VppInterfaceAdminUp(vppIntf string) error {
-	err := vpp_set_vpp_interface_adminup(vppIntf)
+func VppInterfaceAdminUp(vppIntf string, chann *api.Channel) error {
+	err := vpp_set_vpp_interface_adminup(vppIntf, chann)
 	if err != nil {
 		return err
 	}
@@ -240,12 +240,7 @@ func vpp_set_interface_l2_bridge(bdid uint32, intfIndex uint32, shg uint8, chann
  ***************************************************************
  */
 
-func vpp_add_af_packet_interface(vppIntf string) error {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+func vpp_add_af_packet_interface(vppIntf string, chann *api.Channel) error {
 
 	req := &af_packet.AfPacketCreate{
 		HostIfName:      []byte(vppIntf),
@@ -253,12 +248,12 @@ func vpp_add_af_packet_interface(vppIntf string) error {
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &af_packet.AfPacketCreateReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not add ad_packet interface")
@@ -273,24 +268,19 @@ func vpp_add_af_packet_interface(vppIntf string) error {
 	return nil
 }
 
-func vpp_del_af_packet_interface(vppIntf string) error {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+func vpp_del_af_packet_interface(vppIntf string, chann *api.Channel) error {
 
 	req := &af_packet.AfPacketDelete{
 		HostIfName: []byte(vppIntf),
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &af_packet.AfPacketDeleteReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not delete ad_packet interface")
@@ -300,12 +290,7 @@ func vpp_del_af_packet_interface(vppIntf string) error {
 	return nil
 }
 
-func vpp_set_vpp_interface_adminup(vppIntf string) error {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+func vpp_set_vpp_interface_adminup(vppIntf string, chann *api.Channel) error {
 
 	_, ok := vppIntfByName[vppIntf]
 	if !ok {
@@ -318,12 +303,12 @@ func vpp_set_vpp_interface_adminup(vppIntf string) error {
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &interfaces.SwInterfaceSetFlagsReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	if reply.Retval != 0 {
 		return errors.New("Could not add set af_packet interface flag, admin state up")
@@ -374,12 +359,7 @@ func vpp_vxlan_add_del_tunnel(isAdd uint8, isIPv6 uint8, srcAddr []byte,
  ***************************************************************
  */
 
-func vpp_acl_add_replace_rule(vppRule *acl.ACLRule) error {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
+func vpp_acl_add_replace_rule(vppRule *acl.ACLRule, chann *api.Channel) error {
 
 	req := &acl.ACLAddReplace{
 		ACLIndex: ^uint32(0),
@@ -401,12 +381,12 @@ func vpp_acl_add_replace_rule(vppRule *acl.ACLRule) error {
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &acl.ACLAddReplaceReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {
@@ -419,24 +399,18 @@ func vpp_acl_add_replace_rule(vppRule *acl.ACLRule) error {
 	return nil
 }
 
-func vpp_acl_del_rule(vppRule *acl.ACLRule) error {
-	conn, _ := govpp.Connect()
-	defer conn.Disconnect()
-
-	ch, _ := conn.NewAPIChannel()
-	defer ch.Close()
-
+func vpp_acl_del_rule(vppRule *acl.ACLRule, chann *api.Channel) error {
 	req := &acl.ACLDel{
 		ACLIndex: vppRuleByID[vppRule.RuleId].index,
 	}
 
 	// send the request - channel API instead of SendRequest
-	ch.ReqChan <- &api.VppRequest{Message: req}
+	chann.ReqChan <- &api.VppRequest{Message: req}
 
 	// receive the response - channel API instead of ReceiveReply
-	vppReply := <-ch.ReplyChan
+	vppReply := <-chann.ReplyChan
 	reply := &acl.ACLDelReply{}
-	ch.MsgDecoder.DecodeMsg(vppReply.Data, reply)
+	chann.MsgDecoder.DecodeMsg(vppReply.Data, reply)
 
 	fmt.Printf("%+v\n", reply)
 	if reply.Retval != 0 {

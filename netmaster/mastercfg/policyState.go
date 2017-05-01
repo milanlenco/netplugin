@@ -192,25 +192,25 @@ func (gp *EpgPolicy) AddRule(rule *contivModel.Rule) error {
 
 	}
 
-	// create a ruleMap
-	ruleMap := new(RuleMap)
-	ruleMap.VppRules = make(map[string]*vppPolicy.ACLRule)
-	ruleMap.Rule = rule
+	// // create a ruleMap
+	// ruleMap := new(RuleMap)
+	// ruleMap.VppRules = make(map[string]*vppPolicy.ACLRule)
+	// ruleMap.Rule = rule
 
-	// Create vpp rules
-	for _, dir := range dirs {
-		vppRule, err := gp.createVppRule(rule, dir)
-		if err != nil {
-			log.Errorf("Error creating %s vpp rule for {%+v}. Err: %v", dir, rule, err)
-			return err
-		}
+	// // Create vpp rules
+	// for _, dir := range dirs {
+	// 	vppRule, err := gp.createVppRule(rule, dir)
+	// 	if err != nil {
+	// 		log.Errorf("Error creating %s vpp rule for {%+v}. Err: %v", dir, rule, err)
+	// 		return err
+	// 	}
 
-		// add it to the rule map
-		ruleMap.VppRules[vppRule.RuleId] = vppRule
-	}
+	// 	// add it to the rule map
+	// 	ruleMap.VppRules[vppRule.RuleId] = vppRule
+	// }
 
-	// save the rulemap
-	gp.RuleMaps[rule.Key] = ruleMap
+	// // save the rulemap
+	// gp.RuleMaps[rule.Key] = ruleMap
 
 	return nil
 }

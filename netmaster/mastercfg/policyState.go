@@ -26,7 +26,6 @@ import (
 	contivModel "github.com/contiv/contivmodel"
 	"github.com/contiv/netplugin/core"
 	vppPolicy "github.com/fdio-stack/govpp/core/bin_api/acl"
-	govpp "github.com/fdio-stack/govpp/srv"
 )
 
 const (
@@ -192,6 +191,8 @@ func (gp *EpgPolicy) AddRule(rule *contivModel.Rule) error {
 
 	}
 
+	fmt.Println(dirs)
+
 	// create a ruleMap
 	ruleMap := new(RuleMap)
 	ruleMap.VppRules = make(map[string]*vppPolicy.ACLRule)
@@ -218,30 +219,30 @@ func (gp *EpgPolicy) AddRule(rule *contivModel.Rule) error {
 // DelRule removes a rule from epg policy
 func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 	// check if the rule exists
-	ruleMap := gp.RuleMaps[rule.Key]
-	if ruleMap == nil {
-		return core.Errorf("Rule does not exists")
-	}
+	// ruleMap := gp.RuleMaps[rule.Key]
+	// if ruleMap == nil {
+	// 	return core.Errorf("Rule does not exists")
+	// }
 
-	// Delete each vpp rule under this policy rule
-	for _, vppRule := range ruleMap.VppRules {
-		log.Infof("Deleting rule {%+v} from policyDB", vppRule)
+	// // Delete each vpp rule under this policy rule
+	// for _, vppRule := range ruleMap.VppRules {
+	// 	log.Infof("Deleting rule {%+v} from policyDB", vppRule)
 
-		// Delete the rule from policyDB
-		err := govpp.VppACLDelRule(vppRule)
-		if err != nil {
-			log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
-		}
+	// 	// Delete the rule from policyDB
+	// 	err := govpp.VppACLDelRule(vppRule)
+	// 	if err != nil {
+	// 		log.Errorf("Error deleting the vpp rule {%+v}. Err: %v", vppRule, err)
+	// 	}
 
-		// brecode: Send DelRule to netplugin agents
-		err = delPolicyRuleState(vppRule)
-		if err != nil {
-			log.Errorf("Error deleting the vppRule rule {%+v}. Err: %v", vppRule, err)
-		}
-	}
+	// 	// brecode: Send DelRule to netplugin agents
+	// 	err = delPolicyRuleState(vppRule)
+	// 	if err != nil {
+	// 		log.Errorf("Error deleting the vppRule rule {%+v}. Err: %v", vppRule, err)
+	// 	}
+	// }
 
 	// delete the cache
-	delete(gp.RuleMaps, rule.Key)
+	// delete(gp.RuleMaps, rule.Key)
 
 	return nil
 }

@@ -241,7 +241,7 @@ host-swarm-restart:
 
 host-restart:
 	@echo dev: restarting services...
-	cd $(GOPATH)/src/github.com/contiv/netplugin/scripts/python && PYTHONIOENCODING=utf-8 ./startPlugin.py -nodes ${CLUSTER_NODE_IPS}
+	cd $(GOPATH)/src/github.com/contiv/netplugin/scripts/python && PYTHONIOENCODING=utf-8 ./startPlugin.py -nodes ${CLUSTER_NODE_IPS} -driver ${CONTIV_DRIVER}
 
 # create the rootfs for v2plugin. this is required for docker plugin create command
 host-pluginfs-create:

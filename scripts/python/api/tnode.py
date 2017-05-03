@@ -188,3 +188,8 @@ class Node:
             return False
 
         return True
+        
+    # Stop and start VPP
+    def restartVPP(self):
+        self.runCmd("sudo service vpp stop")
+        self.runCmd("sudo service vpp start")

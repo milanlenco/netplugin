@@ -6,7 +6,7 @@ import tutils
 # This class represents a testbed i.e, collection of nodes
 class Testbed:
     # Initialize a testbed
-    def __init__(self, addrList, username='vagrant', password='vagrant', binpath='/opt/gopath/bin', plugintype='binary'):
+    def __init__(self, addrList, username='vagrant', password='vagrant', binpath='/opt/gopath/bin', plugintype='binary', driver='ovs'):
         self.nodes = []
         self.failOnError = True
         # Basic error checking
@@ -31,6 +31,13 @@ class Testbed:
         for node in self.nodes:
             node.cleanupMaster()
             node.cleanupSlave()
+
+                # stop/start vpp dataplane 
+        if driver == 'vpp':
+            for node in self.nodes:
+                print "Restarting VPP on " + node.hostname
+                node.restartVPP()
+
         # start the plugins
         if plugintype == 'v2plugin':
             self.startV2Plugin()

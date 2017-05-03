@@ -33,9 +33,9 @@ var defaultDbURL = "etcd://127.0.0.1:2379"
 // VppDriver implements the Network and Endpoint Driver interfaces
 // specific to VPP
 type VppDriver struct {
-	vppOper     VppDriverOperState // Oper state of the driver
-	conn        *govppCore.Connection
-	connChan    *govppApi.Channel
+	vppOper     VppDriverOperState              // Oper state of the driver
+	conn        *govppCore.Connection           // Shared memory connection to VPP via vppAdapter.
+	connChan    *govppApi.Channel               // API channel for communication with VPP via govpp core
 	localIP     string                          // Local IP address
 	lock        sync.Mutex                      // lock for modifying shared state
 	nameServer  *nameserver.NetpluginNameServer // nameServer
@@ -67,11 +67,13 @@ func (s *VppDriverOperState) Clear() error {
 
 // Init initializes the VPP driver
 func (d *VppDriver) Init(info *core.InstanceInfo) error {
+
 	if info == nil || info.StateDriver == nil {
 		return core.Errorf("Invalid arguments. instance-info: %+v", info)
 	}
 	d.vppOper.StateDriver = info.StateDriver
 	d.localIP = info.VtepIP
+	// restore the driver's runtime state if it exists
 	err := d.vppOper.Read(info.HostLabel)
 	if core.ErrIfKeyExists(err) != nil {
 		log.Errorf("Failed to read driver oper state for key %q. Error: %s",
@@ -81,20 +83,19 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 		// create the oper state as it is first time start up
 		d.vppOper.ID = info.HostLabel
 
+		// create local endpoint info map
+		d.vppOper.LocalEpInfo = make(map[string]*EpInfo)
+
 		// write the oper
 		err = d.vppOper.Write()
 		if err != nil {
 			return err
 		}
-	}
-
-	// create local endpoint info map
-	d.vppOper.LocalEpInfo = make(map[string]*EpInfo)
-
-	// write the oper
-	err = d.vppOper.Write()
-	if err != nil {
-		return err
+		// write the oper
+		err = d.vppOper.Write()
+		if err != nil {
+			return err
+		}
 	}
 
 	// make sure LocalEpInfo exists
@@ -107,12 +108,13 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 		}
 	}
 
+	log.Infof("Initializing vppdriver")
+
 	d.objdbClient, err = objdb.NewClient(defaultDbURL)
 	if err != nil {
 		log.Fatalf("Error connecting to state store: %s. Err: %v", defaultDbURL, err)
 	}
 
-	log.Infof("Initializing vpp driver")
 	d.conn, d.connChan, err = govpp.VppConnect()
 	if err != nil {
 		log.Fatalf("Error connecting to data plane - VPP, Err: %v", err)
@@ -127,6 +129,7 @@ func (d *VppDriver) Deinit() {
 
 // CreateNetwork creates a bridge domain network for a given ID in VPP
 func (d *VppDriver) CreateNetwork(id string) error {
+
 	cfgNw := mastercfg.CfgNetworkState{}
 	cfgNw.StateDriver = d.vppOper.StateDriver
 	err := cfgNw.Read(id)
@@ -134,10 +137,12 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		log.Errorf("Failed to read net %s \n", cfgNw.ID)
 		return err
 	}
-	isAdd := 1
 	log.Infof("Create net %+v \n", cfgNw)
+	// VppAddDelBridgeDomain creates a bridge domain in VPP
+	isAdd := 1
 	err = govpp.VppAddDelBridgeDomain(id, uint32(cfgNw.PktTag), uint8(isAdd), d.connChan)
 	if err != nil {
+		log.Errorf("Error adding bridge domain to VPP, Err: %v", err)
 		return err
 	}
 
@@ -164,20 +169,21 @@ func (d *VppDriver) CreateNetwork(id string) error {
 	// 	}
 	// }
 
+	// Temp fix for cluster IP assignment
 	localIP := d.localIP
 	if localIP != "192.168.2.10" {
 		localIP = "192.168.3.11"
 	} else {
 		localIP = "192.168.3.10"
 	}
-
 	clusterIP := []string{"192.168.3.10", "192.168.3.11"}
-
+	// Create VXLAN tunnels between all the nodes of the cluster
+	// VppSetInterfaceL2Bridge connects the VXLAN tunnel and the Bridge Domain
 	for _, nodeIP := range clusterIP {
 		if nodeIP != localIP {
 			tunnelIfIndex, err := govpp.VppVxlanAddDelTunnel(uint8(isAdd), 0, net.ParseIP(localIP).To4(), net.ParseIP(nodeIP).To4(), uint32(cfgNw.ExtPktTag), d.connChan)
 			if err != nil {
-				log.Infof("Could not create vxlan tunnel")
+				log.Infof("Could not create vxlan tunnel, Err: %v", err)
 				return err
 			}
 			err = govpp.VppSetInterfaceL2Bridge(id, 1, "", tunnelIfIndex, uint8(1), d.connChan)
@@ -187,15 +193,16 @@ func (d *VppDriver) CreateNetwork(id string) error {
 			}
 		}
 	}
-
 	return nil
 }
 
 // DeleteNetwork deletes a network for a given ID from VPP
 func (d *VppDriver) DeleteNetwork(id string, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
+	// VppAddDelBridgeDomain deletes a bridge domain from VPP when isAdd is 0
 	isAdd := 0
 	err := govpp.VppAddDelBridgeDomain(id, uint32(pktTag), uint8(isAdd), d.connChan)
 	if err != nil {
+		log.Errorf("Error deleting bridge domain from VPP, Err: %v", err)
 		return err
 	}
 	return nil
@@ -273,8 +280,28 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	return nil
 }
 
-//UpdateEndpointGroup is not implemented.
-func (d *VppDriver) UpdateEndpointGroup(id string) error {
+// AddPolicyRule is not implemented
+func (d *VppDriver) AddPolicyRule(id string) error {
+
+	ruleCfg := &mastercfg.CfgPolicyRule{}
+	ruleCfg.StateDriver = d.vppOper.StateDriver
+	err := ruleCfg.Read(id)
+	if err != nil {
+		log.Errorf("Failed to read ruleCfg \n")
+		return err
+	}
+	vppRule := &ruleCfg.ACLRule
+
+	err = govpp.VppACLAddReplaceRule(vppRule, d.connChan)
+	if err != nil {
+		log.Errorf("Error creating rule {%+v}. Err: %v", vppRule, err)
+		return err
+	}
+	return nil
+}
+
+// DelPolicyRule is not implemented
+func (d *VppDriver) DelPolicyRule(id string) error {
 	return core.Errorf("Not implemented")
 }
 
@@ -291,13 +318,13 @@ func (d *VppDriver) DeleteEndpoint(id string) (err error) {
 	}()
 
 	link1 := operEp.PortName
-	link2 := fmt.Sprint("veth_" + link1)
+	link2 := link1[5:]
 	err = netutils.DeleteVethPairVpp(link1, link2)
 	if err != nil {
 		log.Errorf("Error deleting endpoint: %+v. Err: %v", operEp, err)
 	}
 
-	err = govpp.VppDelInterface(operEp.PortName)
+	err = govpp.VppDelInterface(link2, d.connChan)
 	if err != nil {
 		log.Errorf("Error deleting endpoint: %+v. Err: %v", operEp, err)
 	}
@@ -307,6 +334,21 @@ func (d *VppDriver) DeleteEndpoint(id string) (err error) {
 	d.vppOper.localEpInfoMutex.Unlock()
 
 	return nil
+}
+
+// CreateRemoteEndpoint is not implemented.
+func (d *VppDriver) CreateRemoteEndpoint(id string) error {
+	return core.Errorf("Not implemented")
+}
+
+// DeleteRemoteEndpoint is not implemented.
+func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
+	return core.Errorf("Not implemented")
+}
+
+//UpdateEndpointGroup is not implemented.
+func (d *VppDriver) UpdateEndpointGroup(id string) error {
+	return core.Errorf("Not implemented")
 }
 
 // CreateHostAccPort is not implemented.
@@ -388,26 +430,6 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 	return []byte{}, core.Errorf("Not implemented")
 }
 
-// CreateRemoteEndpoint is not implemented.
-func (d *VppDriver) CreateRemoteEndpoint(id string) error {
-	return core.Errorf("Not implemented")
-}
-
-// DeleteRemoteEndpoint is not implemented.
-func (d *VppDriver) DeleteRemoteEndpoint(id string) (err error) {
-	return core.Errorf("Not implemented")
-}
-
-// AddPolicyRule is not implemented
-func (d *VppDriver) AddPolicyRule(id string) error {
-	return core.Errorf("Not implemented")
-}
-
-// DelPolicyRule is not implemented
-func (d *VppDriver) DelPolicyRule(id string) error {
-	return core.Errorf("Not implemented")
-}
-
 // getVppIntfName returns VPP Interface name
 func getVppIntfName(intfName string) (string, error) {
 	// Same interface format for vpp veth pair without the prefix
@@ -458,17 +480,17 @@ func (d *VppDriver) addVppIntf(id string, intfName string) error {
 		return err
 	}
 
-	err = govpp.VppAddInterface(vppIntfName, d.chann)
+	err = govpp.VppAddInterface(vppIntfName, d.connChan)
 	if err != nil {
 		log.Errorf("Error creating the vpp-side interface, Err: %v", err)
 		return err
 	}
-	err = govpp.VppInterfaceAdminUp(vppIntfName, d.chann)
+	err = govpp.VppInterfaceAdminUp(vppIntfName, d.connChan)
 	if err != nil {
 		log.Errorf("Error setting the vpp-side interface state to up, Err: %v", err)
 		return err
 	}
-	err = govpp.VppSetInterfaceL2Bridge(id, 0, vppIntfName, uint32(0), uint8(0), d.chann)
+	err = govpp.VppSetInterfaceL2Bridge(id, 0, vppIntfName, uint32(0), uint8(0), d.connChan)
 	if err != nil {
 		log.Errorf("Error adding interface to bridge domain, Err: %v", err)
 		return err

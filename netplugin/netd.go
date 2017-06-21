@@ -219,10 +219,11 @@ func main() {
 	}
 	stateStore := parts[0]
 
+	// nb - Make it pluggable to support different drivers
 	// initialize the config
 	pluginConfig := plugin.Config{
 		Drivers: plugin.Drivers{
-			Network: "ovs",
+			Network: "vpp",
 			State:   stateStore,
 		},
 		Instance: core.InstanceInfo{

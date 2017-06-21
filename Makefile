@@ -81,7 +81,7 @@ ifneq ($(GO_VERSION), $(firstword $(sort $(GO_VERSION) $(GO_MAX_VERSION))))
 	$(error go version check failed, expected <= $(GO_MAX_VERSION), found $(GO_VERSION))
 endif
 
-checks: go-version gofmt-src golint-src govet-src misspell-src
+checks: go-version golint-src govet-src misspell-src
 
 run-build: deps checks clean
 	cd $(GOPATH)/src/github.com/contiv/netplugin && \

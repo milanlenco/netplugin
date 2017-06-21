@@ -15,7 +15,7 @@ BEGIN {
 }
 
 # netplugin_synced_gopath="/opt/golang"
-go_version = ENV['GO_VERSION'] || '1.7.5'
+go_version = ENV['GO_VERSION'] || '1.7.6'
 docker_version = ENV['CONTIV_DOCKER_VERSION'] || '1.12.6'
 docker_swarm = ENV['CONTIV_DOCKER_SWARM'] || 'classic_mode'
 gopath_folder = '/opt/gopath'
@@ -78,7 +78,7 @@ fi
 # Install specific docker version if required
 installed_docker=$(sudo docker version | grep Version | tail -1 | awk '{ print $2 }')
 if [[ "$installed_docker" != "#{docker_version}" ]]; then
-    reinstall=1
+    reinstall=0
     echo "Installing Docker #{docker_version}"
 else
     echo "Docker #{docker_version} is already installed"
@@ -260,7 +260,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         config.vm.box_version = "0.7.0"
     else
         config.vm.box = "contiv/centos73"
-        config.vm.box_version = "0.10.1"
+        config.vm.box_version = "0.10.2"
     end
     config.vm.provider 'virtualbox' do |v|
         v.linked_clone = true if Vagrant::VERSION >= "1.8"
@@ -354,8 +354,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             node.vm.provider "virtualbox" do |v|
                 customize(v, :id)
                 v.customize ['modifyvm', :id, '--nicpromisc2', 'allow-all']
-                v.customize ['modifyvm', :id, '--nicpromisc3', 'allow-all']
-                v.customize ['modifyvm', :id, '--nicpromisc4', 'allow-all']
+                # v.customize ['modifyvm', :id, '--nicpromisc3', 'allow-all']
+                # v.customize ['modifyvm', :id, '--nicpromisc4', 'allow-all']
+                v.customize ['modifyvm', :id, '--nictype3', '82545EM']
+                v.customize ['modifyvm', :id, '--nictype4', '82545EM']
+                v.memory=5112
+                v.cpus=2
             end
 
             # mount the host directories

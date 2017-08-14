@@ -19,10 +19,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/netplugin/core"
-	//vpp "github.com/ligato/vpp-agent"
+	"github.com/contiv/netplugin/netmaster/mastercfg"
+	log "github.com/ligato/cn-infra/logging/logrus"
+
+	agentCore "github.com/ligato/cn-infra/core"
+	"github.com/ligato/vpp-agent/clientv1/linux/localclient"
+	"github.com/ligato/vpp-agent/flavours/linuxlocal"
+	vpp_l2 "github.com/ligato/vpp-agent/plugins/defaultplugins/l2plugin/model/l2"
 )
 
 // VppDriverOperState carries operational state of the VppDriver.
@@ -55,35 +61,119 @@ func (s *VppDriverOperState) Clear() error {
 	return s.StateDriver.ClearState(key)
 }
 
+const vppDriverID agentCore.PluginName = "contiv-vpp-driver"
+
 // VppDriver holds the operational state of vpp driver
 type VppDriver struct {
-	oper    VppDriverOperState // Oper state of the driver
-	localIP string             // Local IP address
-	lock    sync.Mutex         // lock for modifying shared state
+	oper     VppDriverOperState // Oper state of the driver
+	localIP  string             // Local IP address
+	lock     sync.Mutex         // lock for modifying shared state
+	vppAgent *agentCore.Agent   // VPP agent
 }
 
-// Init is not implemented.
+// Init initializes the VPP driver with VPP agent.
 func (d *VppDriver) Init(info *core.InstanceInfo) error {
+
+	if info == nil || info.StateDriver == nil {
+		return core.Errorf("Invalid arguments. instance-info: %+v", info)
+	}
+	d.oper.StateDriver = info.StateDriver
+	d.localIP = info.VtepIP
+	// restore the driver's runtime state if it exists
+	err := d.oper.Read(info.HostLabel)
+	if core.ErrIfKeyExists(err) != nil {
+		log.Errorf("Failed to read driver oper state for key %q. Error: %s",
+			info.HostLabel, err)
+		return err
+	} else if err != nil {
+		// create the oper state as it is first time start up
+		d.oper.ID = info.HostLabel
+
+		// write the oper
+		err = d.oper.Write()
+		if err != nil {
+			return err
+		}
+		// write the oper
+		err = d.oper.Write()
+		if err != nil {
+			return err
+		}
+	}
+
 	log.Infof("Initializing vppdriver")
 
+	flavour := linuxlocal.Flavour{}
+	d.vppAgent = agentCore.NewAgent(log.StandardLogger(), 15*time.Second, flavour.Plugins()...)
+
+	err = d.vppAgent.Start()
+	if err != nil {
+		log.Fatalf("Error starting VPP agent, Err: %v", err)
+		return err
+	}
+
 	return nil
 }
 
-// Deinit is not implemented.
+// Deinit closes the driver. Primarily it stops the associated VPP agent.
 func (d *VppDriver) Deinit() {
 	log.Infof("Cleaning up vppdriver")
+
+	err := d.vppAgent.Stop()
+	if err != nil {
+		log.Warnf("Error stopping VPP agent, Err: '%v'", err)
+	}
 }
 
-// CreateNetwork is not implemented.
+// CreateNetwork creates a bridge domain network for a given ID in VPP
 // We get the Tenant/vrf and network/subnet info from contiv in this API
 func (d *VppDriver) CreateNetwork(id string) error {
-	log.Infof("Not implemented")
+	cfgNw := mastercfg.CfgNetworkState{}
+	cfgNw.StateDriver = d.oper.StateDriver
+	err := cfgNw.Read(id)
+	if err != nil {
+		log.Errorf("Failed to read network id='%s'", id)
+		return err
+	}
+
+	log.Infof("Create network id='%s', config='%+v'", id, cfgNw)
+
+	bd := &vpp_l2.BridgeDomains_BridgeDomain{
+		Name:                "bd-" + id,
+		Flood:               true,
+		UnknownUnicastFlood: true,
+		Forward:             true,
+		Learn:               true,
+		ArpTermination:      false,
+		MacAge:              0,
+		Interfaces:          nil,
+	}
+
+	err = localclient.DataChangeRequest(vppDriverID).
+		Put().
+		BD(bd). /* TODO: VXLANs, ACL */
+		Send().ReceiveReply()
+	if err != nil {
+		log.Errorf("Failed to create network id='%s', Err: %v", id, err)
+		return err
+	}
+
 	return nil
 }
 
-// DeleteNetwork is not implemented.
+// DeleteNetwork deletes a network for a given ID from VPP
 func (d *VppDriver) DeleteNetwork(id, subnet, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
-	log.Infof("Not implemented")
+	log.Infof("Delete network id='%s'", id)
+
+	err := localclient.DataChangeRequest(vppDriverID).
+		Delete().
+		BD("bd-" + id). /* TODO: VXLANs, ACL */
+		Send().ReceiveReply()
+	if err != nil {
+		log.Errorf("Failed to delete network id='%s', Err: %v", id, err)
+		return err
+	}
+
 	return nil
 }
 

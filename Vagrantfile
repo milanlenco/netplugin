@@ -138,12 +138,37 @@ rm /etc/docker/key.json
 (service docker restart) || exit 1
 
 usermod -aG docker vagrant
+
+if [[ "#{node_os}" == "ubuntu" ]]; then
+    sudo apt-get update
+    sudo apt-get install -y make autoconf automake libtool curl make g++ unzip python-ply python-pycparser python-cffi golang-gogoprotobuf-dev
+    
+    rm -rf protobuf
+    git clone https://github.com/google/protobuf.git
+    (cd protobuf; ./autogen.sh; ./configure; make -j4; sudo make install; sudo ldconfig)
+    
+    rm -rf vpp
+    git clone https://gerrit.fd.io/r/vpp -b stable/1707
+    (cd vpp; yes | sudo make install-dep; make bootstrap; make pkg-deb; (cd build-root; sudo dpkg -i vpp*.deb))
+    echo "api-trace { on } dpdk { dev 0000:00:09.0 }" > /etc/vpp/startup.conf
+
+    # configure Huge pages
+    sudo groupadd hugetlbfs
+    sudo adduser vagrant hugetlbfs
+    sudo echo "vm.nr_hugepages = 512" >> /etc/sysctl.conf
+    sudo echo "vm.hugetlb_shm_group = `getent group hugetlbfs | cut -d: -f3`" >> /etc/sysctl.conf
+    sudo mkdir /mnt/huge
+    sudo echo "nodev                                     /mnt/huge       hugetlbfs defaults          0  0" >> /etc/fstab
+    sudo sysctl -p
+
+    ln -s /opt/gopath/src/github.com/contiv/netplugin/ /home/vagrant/netplugin
+fi
 SCRIPT
 
 provision_common_always = <<SCRIPT
 /sbin/ip addr add "$1/24" dev eth1
 /sbin/ip link set eth1 up
-/sbin/ip link set eth2 up
+/sbin/ip link set eth2 down
 /sbin/ip link set eth3 up
 
 # Drop cache to workaround vboxsf problem
@@ -158,6 +183,20 @@ systemctl start openvswitch
 # Enable ovs mgmt port
 (ovs-vsctl set-manager tcp:127.0.0.1:6640 && \
  ovs-vsctl set-manager ptcp:6640) || exit 1
+
+# Configure VPP
+if pidof vpp; then
+	kill `pidof vpp`
+	sleep 5 
+fi
+vpp "api-trace { on } dpdk { dev 0000:00:09.0 }"
+sleep 5
+if [[ $(hostname) == "netplugin-node1" ]]; then 
+	vppctl set int ip address GigabitEthernet0/9/0 192.168.3.10/24
+else
+	vppctl set int ip address GigabitEthernet0/9/0 192.168.3.11/24
+fi
+vppctl set interface state GigabitEthernet0/9/0 up
 SCRIPT
 
 provision_node = <<SCRIPT

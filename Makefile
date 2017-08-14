@@ -19,7 +19,7 @@ TAR_FILENAME := $(NAME)-$(VERSION).$(TAR_EXT)
 TAR_LOC := .
 TAR_FILE := $(TAR_LOC)/$(TAR_FILENAME)
 GO_MIN_VERSION := 1.7
-GO_MAX_VERSION := 1.8
+GO_MAX_VERSION := 1.8.3
 GO_VERSION := $(shell go version | cut -d' ' -f3 | sed 's/go//')
 GOLINT_CMD := golint -set_exit_status
 GOFMT_CMD := gofmt -s -l
@@ -83,9 +83,9 @@ ifneq ($(GO_VERSION), $(firstword $(sort $(GO_VERSION) $(GO_MAX_VERSION))))
 	$(error go version check failed, expected <= $(GO_MAX_VERSION), found $(GO_VERSION))
 endif
 
-checks: go-version gofmt-src golint-src govet-src misspell-src
+checks: go-version gofmt-src golint-src govet-src #misspell-src
 
-run-build: deps checks clean
+run-build: #deps checks clean
 	cd $(GOPATH)/src/github.com/contiv/netplugin && \
 	USE_RELEASE=${USE_RELEASE} BUILD_VERSION=${BUILD_VERSION} \
 	TO_BUILD="${TO_BUILD}" VERSION_FILE=${VERSION_FILE} \
@@ -142,10 +142,10 @@ k8s-l3-cluster:
 	CONTIV_L3=1 make k8s-cluster
 
 k8s-destroy:
-	cd vagrant/k8s/ && vagrant destroy -f
+	cd vagrant/k8s/ && vagrant destroy #-f
 
 k8s-l3-destroy:
-	cd vagrant/k8s/ && CONTIV_L3=1 vagrant destroy -f
+	cd vagrant/k8s/ && CONTIV_L3=1 vagrant destroy #-f
 
 # ===================================================================
 # kubernetes test targets
@@ -156,19 +156,19 @@ k8s-legacy-test:
 	./start_sanity_service.sh
 	cd $(GOPATH)/src/github.com/contiv/netplugin/scripts/python && PYTHONIOENCODING=utf-8 ./createcfg.py -scheduler 'k8s'
 	CONTIV_K8S_LEGACY=1 CONTIV_NODES=3 go test -v -timeout 540m ./test/systemtests -check.v -check.abort -check.f "00SSH|TestBasic|TestNetwork|ACID|TestPolicy|TestTrigger"
-	cd vagrant/k8s && vagrant destroy -f
+	cd vagrant/k8s && vagrant destroy #-f
 
 k8s-test: k8s-cluster
 	cd vagrant/k8s/ && vagrant ssh k8master -c 'bash -lc "cd /opt/gopath/src/github.com/contiv/netplugin && make run-build"'
 	cd $(GOPATH)/src/github.com/contiv/netplugin/scripts/python && PYTHONIOENCODING=utf-8 ./createcfg.py -scheduler 'k8s' -binpath contiv/bin -install_mode 'kubeadm'
 	CONTIV_K8S_USE_KUBEADM=1 CONTIV_NODES=3 go test -v -timeout 540m ./test/systemtests -check.v -check.abort -check.f "00SSH|TestBasic|TestNetwork|TestPolicy"
-	cd vagrant/k8s && vagrant destroy -f
+	cd vagrant/k8s && vagrant destroy #-f
 
 k8s-l3-test: k8s-l3-cluster
 	cd vagrant/k8s/ && vagrant ssh k8master -c 'bash -lc "cd /opt/gopath/src/github.com/contiv/netplugin && make run-build"'
 	cd $(GOPATH)/src/github.com/contiv/netplugin/scripts/python && PYTHONIOENCODING=utf-8 ./createcfg.py -scheduler 'k8s' -binpath contiv/bin -install_mode 'kubeadm' -contiv_l3=1
 	CONTIV_K8S_USE_KUBEADM=1 CONTIV_NODES=3 go test -v -timeout 540m ./test/systemtests -check.v -check.abort -check.f "00SSH|TestBasic|TestNetwork|TestPolicy"
-	cd vagrant/k8s && CONTIV_L3=1 vagrant destroy -f
+	cd vagrant/k8s && CONTIV_L3=1 vagrant destroy #-f
 # ===================================================================
 
 # Mesos demo targets
@@ -179,7 +179,7 @@ mesos-docker-demo:
 	vagrant ssh node1 -c 'bash -lc "source /etc/profile.d/envvar.sh && cd /opt/gopath/src/github.com/contiv/netplugin && ./scripts/python/startPlugin.py -nodes 192.168.33.10,192.168.33.11"'
 
 mesos-docker-destroy:
-	cd vagrant/mesos-docker && vagrant destroy -f
+	cd vagrant/mesos-docker && vagrant destroy #-f
 
 nomad-docker:
 	cd vagrant/nomad-docker && vagrant up
@@ -198,7 +198,8 @@ ifdef NET_CONTAINER_BUILD
 stop:
 else
 stop:
-	CONTIV_NODES=$${CONTIV_NODES:-3} vagrant destroy -f
+	echo "Not destroying anything!!!"
+	#CONTIV_NODES=$${CONTIV_NODES:-3} vagrant destroy -f
 endif
 
 demo: ssh-build
@@ -211,8 +212,9 @@ ifdef NET_CONTAINER_BUILD
 ssh-build:
 	cd /go/src/github.com/contiv/netplugin && make run-build install-shell-completion
 else
-ssh-build: start
-	vagrant ssh netplugin-node1 -c 'bash -lc "source /etc/profile.d/envvar.sh && cd /opt/gopath/src/github.com/contiv/netplugin && make run-build install-shell-completion"'
+ssh-build: #start
+	vagrant ssh netplugin-node1 -c '/opt/gopath/src/github.com/contiv/netplugin/myscripts/build.sh'
+	vagrant ssh netplugin-node2 -c '/opt/gopath/src/github.com/contiv/netplugin/myscripts/build.sh'
 endif
 
 unit-test: stop clean
@@ -279,7 +281,7 @@ host-swarm-restart:
 
 host-restart:
 	@echo dev: restarting services...
-	cd $(GOPATH)/src/github.com/contiv/netplugin/scripts/python && PYTHONIOENCODING=utf-8 ./startPlugin.py -nodes ${CLUSTER_NODE_IPS}
+	vagrant ssh netplugin-node1 -c '/opt/gopath/src/github.com/contiv/netplugin/myscripts/restart.sh'
 
 # create the rootfs for v2plugin. this is required for docker plugin create command
 host-pluginfs-create:

@@ -21,7 +21,7 @@ import (
 
 	"github.com/ligato/cn-infra/logging"
 	"github.com/ligato/cn-infra/utils/safeclose"
-	"github.com/namsral/flag"
+	//"github.com/namsral/flag"
 )
 
 // variables set by the Makefile using ldflags
@@ -61,7 +61,7 @@ func (agent *Agent) Start() error {
 	doneChannel := make(chan struct{}, 0)
 	errChannel := make(chan error, 0)
 
-	flag.Parse()
+	//flag.Parse()
 
 	go func() {
 		err := agent.initPlugins()

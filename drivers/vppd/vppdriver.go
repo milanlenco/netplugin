@@ -20,10 +20,13 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"os"
 
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
+
 	log "github.com/ligato/cn-infra/logging/logrus"
+	"github.com/ligato/cn-infra/logging"
 
 	agentCore "github.com/ligato/cn-infra/core"
 	"github.com/ligato/vpp-agent/clientv1/linux/localclient"
@@ -73,6 +76,9 @@ type VppDriver struct {
 
 // Init initializes the VPP driver with VPP agent.
 func (d *VppDriver) Init(info *core.InstanceInfo) error {
+
+	log.SetOutput(os.Stdout)
+	log.SetLevel(logging.DebugLevel)
 
 	if info == nil || info.StateDriver == nil {
 		return core.Errorf("Invalid arguments. instance-info: %+v", info)

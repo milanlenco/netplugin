@@ -9,7 +9,7 @@ import (
 	"github.com/ligato/cn-infra/datasync/syncbase"
 	"github.com/ligato/cn-infra/logging"
 	"github.com/ligato/cn-infra/utils/safeclose"
-	"github.com/namsral/flag"
+	//"github.com/namsral/flag"
 	"github.com/unrolled/render"
 	"net/http"
 	"time"
@@ -29,8 +29,9 @@ var (
 
 // init is here only for parsing program arguments
 func init() {
-	flag.StringVar(&httpPort, "http-port", DefaultHTTPPort,
-		"Listen port for the Agent's HTTP server.")
+	httpPort = DefaultHTTPPort
+	//flag.StringVar(&httpPort, "http-port", DefaultHTTPPort,
+	//	"Listen port for the Agent's HTTP server.")
 }
 
 // Plugin implements the Plugin interface.

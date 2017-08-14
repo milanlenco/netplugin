@@ -21,7 +21,7 @@ import (
 	"github.com/ligato/cn-infra/servicelabel"
 	"github.com/ligato/cn-infra/statuscheck"
 	"github.com/ligato/cn-infra/utils/config"
-	"github.com/namsral/flag"
+	//"github.com/namsral/flag"
 )
 
 const (
@@ -43,7 +43,8 @@ type Plugin struct {
 var defaultConfigFileName string
 
 func init() {
-	flag.StringVar(&defaultConfigFileName, "etcdv3-config", "", "Location of the Etcd configuration file; also set via 'ETCDV3_CONFIG' env variable.")
+	defaultConfigFileName = ""
+	//flag.StringVar(&defaultConfigFileName, "etcdv3-config", "", "Location of the Etcd configuration file; also set via 'ETCDV3_CONFIG' env variable.")
 }
 
 func (p *Plugin) retrieveConfig() (*Config, error) {

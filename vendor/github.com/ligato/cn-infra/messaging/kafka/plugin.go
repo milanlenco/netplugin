@@ -24,7 +24,7 @@ import (
 	"github.com/ligato/cn-infra/servicelabel"
 	"github.com/ligato/cn-infra/statuscheck"
 	"github.com/ligato/cn-infra/utils/safeclose"
-	"github.com/namsral/flag"
+	//"github.com/namsral/flag"
 )
 
 // PluginID used in the Agent Core flavors
@@ -33,7 +33,8 @@ const PluginID core.PluginName = "KafkaClient"
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "kafka-config", "", "Location of the Kafka configuration file; also set via 'KAFKA_CONFIG' env variable.")
+	configFile = ""
+	//flag.StringVar(&configFile, "kafka-config", "", "Location of the Kafka configuration file; also set via 'KAFKA_CONFIG' env variable.")
 }
 
 // Mux defines API for the plugins that use access to kafka brokers.

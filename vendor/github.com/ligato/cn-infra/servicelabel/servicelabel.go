@@ -14,10 +14,10 @@
 
 package servicelabel
 
-import (
-	"fmt"
-	"github.com/namsral/flag"
-)
+//import (
+//	"fmt"
+//	"github.com/namsral/flag"
+//)
 
 // default service key prefix, can be changed in the build time using ldflgs, e.g.
 // -ldflags '-X github.com/ligato/cn-infra/servicelabel.agentPrefix=/xyz/'
@@ -36,7 +36,8 @@ type Plugin struct {
 var microserviceLabelFlag string
 
 func init() {
-	flag.StringVar(&microserviceLabelFlag, "microservice-label", "vpp1", fmt.Sprintf("microservice label; also set via '%v' env variable.", MicroserviceLabelEnvVar))
+	microserviceLabelFlag = "vpp1"
+	//flag.StringVar(&microserviceLabelFlag, "microservice-label", "vpp1", fmt.Sprintf("microservice label; also set via '%v' env variable.", MicroserviceLabelEnvVar))
 }
 
 // Init is called at plugin initialization.

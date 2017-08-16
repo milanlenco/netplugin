@@ -22,8 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/drivers"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
@@ -45,7 +43,7 @@ import (
 // EndpointConfig stores configuration for a given endpoint.
 type EndpointConfig struct {
 	vppVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to AFPacket
-	endVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to the endpoint
+	epVeth   *linux_if.LinuxInterfaces_Interface // VETH interface attached to the endpoint
 	afpacket *vpp_if.Interfaces_Interface        // AFPacket interface
 }
 
@@ -312,11 +310,13 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		return err
 	}
 
-	cinfo, err := d.dockerClient.ContainerInspect(context.Background(), cfgEp.ContainerID)
-	if err != nil {
-		log.Fatalf("Error getting container info for endpoint id: %s. Err: %v", id, err)
-		return err
-	}
+	/*
+		cinfo, err := d.dockerClient.ContainerInspect(context.Background(), cfgEp.ContainerID)
+		if err != nil {
+			log.Fatalf("Error getting container info for endpoint id: %s. Err: %v", id, err)
+			return err
+		}
+	*/
 
 	vppVethName := cfgEp.EndpointID[:9]
 	epVethName := "veth-" + vppVethName
@@ -332,7 +332,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		},
 	}
 
-	epcfg.endVeth = &linux_if.LinuxInterfaces_Interface{
+	epcfg.epVeth = &linux_if.LinuxInterfaces_Interface{
 		Name:    epVethName,
 		Type:    linux_if.LinuxInterfaces_VETH,
 		Enabled: true,
@@ -342,10 +342,11 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		IpAddresses: []string{cfgEp.IPAddress},
 		PhysAddress: cfgEp.MacAddress,
 		// TODO: this should be something like Namespace_CONTAINER_REF_NS
-		Namespace: &linux_if.LinuxInterfaces_Interface_Namespace{
-			Type: linux_if.LinuxInterfaces_Interface_Namespace_PID_REF_NS,
-			Pid:  uint32(cinfo.State.Pid),
-		},
+		/*		Namespace: &linux_if.LinuxInterfaces_Interface_Namespace{
+					Type: linux_if.LinuxInterfaces_Interface_Namespace_PID_REF_NS,
+					Pid:  uint32(cinfo.State.Pid),
+				},
+		*/
 	}
 
 	epcfg.afpacket = &vpp_if.Interfaces_Interface{
@@ -386,7 +387,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		Put().
 		BD(netcfg.bd).
 		LinuxInterface(epcfg.vppVeth).
-		LinuxInterface(epcfg.endVeth).
+		LinuxInterface(epcfg.epVeth).
 		VppInterface(epcfg.afpacket).
 		Send().
 		ReceiveReply()
@@ -485,7 +486,7 @@ func (d *VppDriver) DeleteEndpoint(id string) error {
 		Delete().
 		VppInterface(epcfg.afpacket.Name).
 		LinuxInterface(epcfg.vppVeth.Name).
-		LinuxInterface(epcfg.endVeth.Name).
+		LinuxInterface(epcfg.epVeth.Name).
 		Send().ReceiveReply()
 	if err != nil {
 		netcfg.bd.Interfaces = origBfIfs

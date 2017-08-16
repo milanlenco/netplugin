@@ -153,7 +153,7 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 
 	log.Infof("Initializing vppdriver")
 
-	d.dockerClient, err = dockerclient.NewClient("unix://var/run/docker.sock", "", nil, nil)
+	d.dockerClient, err = dockerclient.NewClient("unix:///var/run/docker.sock", "", nil, nil)
 	if err != nil {
 		log.Fatalf("Unable to connect to docker. Error %v", err)
 		return err
@@ -339,8 +339,8 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		Veth: &linux_if.LinuxInterfaces_Interface_Veth{
 			PeerIfName: vppVethName,
 		},
-		// TODO: correct IP address?
 		IpAddresses: []string{cfgEp.IPAddress},
+		PhysAddress: cfgEp.MacAddress,
 		// TODO: this should be something like Namespace_CONTAINER_REF_NS
 		Namespace: &linux_if.LinuxInterfaces_Interface_Namespace{
 			Type: linux_if.LinuxInterfaces_Interface_Namespace_PID_REF_NS,

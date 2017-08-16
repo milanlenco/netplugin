@@ -94,7 +94,7 @@ rm -rf /var/lib/docker
 
 if [[ "#{node_os}" == "ubuntu" ]] && [[ "$reinstall" -eq 1 ]]; then
     sudo apt-get purge docker-engine -y || :
-    curl https://get.docker.com | sed s/docker-engine/docker-engine=#{docker_version}-0~xenial/g | bash
+    curl https://releases.rancher.com/install-docker/17.05.sh | sed s/docker-engine/docker-engine=#{docker_version}-0~xenial/g | bash
 elif [[ "$reinstall" -eq 1 ]] && [[ "#{legacy_docker}" -eq 1 ]]; then
     # cleanup openstack-kilo repo if required
     yum remove docker-engine -y || :
@@ -104,7 +104,7 @@ elif [[ "$reinstall" -eq 1 ]] && [[ "#{legacy_docker}" -eq 1 ]]; then
         curl -fsSL https://test.docker.com/ | sh
     else
         echo "Getting released docker version #{docker_version} "
-        curl https://get.docker.com | sed s/docker-engine/docker-engine-#{docker_version}/ | bash
+        curl https://releases.rancher.com/install-docker/17.05.sh | sed s/docker-engine/docker-engine-#{docker_version}/ | bash
     fi
 elif [[ "$reinstall" -eq 1 ]]; then
     yum remove docker-engine -y || :

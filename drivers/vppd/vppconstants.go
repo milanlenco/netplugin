@@ -7,7 +7,7 @@ import (
 
 const (
 	// StateOperPath is the path to the operations stored in state.
-	vppOperPathPrefix = mastercfg.StateOperPath + "vpp-driver/"
-	vppOperPath       = vppOperPathPrefix + "%s"
-	vppDriverID agent_core.PluginName = "contiv-vpp-driver"
+	vppOperPathPrefix                       = mastercfg.StateOperPath + "vpp-driver/"
+	vppOperPath                             = vppOperPathPrefix + "%s"
+	vppDriverID       agent_core.PluginName = "contiv-vpp-driver"
 )

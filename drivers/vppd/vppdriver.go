@@ -238,6 +238,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 				&vpp_l2.BridgeDomains_BridgeDomain_Interfaces{
 					Name: vxlanName,
 					BridgedVirtualInterface: false,
+					SplitHorizonGroup:       1,
 				})
 		}
 	}

@@ -9,6 +9,7 @@ import exceptions
 
 # Utility function to run ssh
 def ssh_exec_thread(ssh_object, command):
+    command = ". /etc/profile.d/envvar.sh; " + command
     print "run: " + command
     stdin, stdout, stderr = ssh_object.exec_command(command)
     out = stdout.readlines()
@@ -47,6 +48,7 @@ class Node:
 
     # Run a command on vagrant node
     def runCmd(self, cmd, timeout=None):
+	cmd = ". /etc/profile.d/envvar.sh; " + cmd
         try:
             print "run: " + cmd
             # We we disconnected for any reason, reconnect

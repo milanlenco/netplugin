@@ -43,13 +43,17 @@ export http_proxy='#{http_proxy}'
 export https_proxy='#{https_proxy}'
 export USE_RELEASE=#{use_release}
 export no_proxy=%{cluster_ip_nodes},127.0.0.1,localhost,netmaster
+export NO_PROXY=%{cluster_ip_nodes},127.0.0.1,localhost,netmaster
 export CLUSTER_NODE_IPS=%{cluster_ip_nodes}
 export CONTIV_CLUSTER_STORE=#{cluster_store}
 export CONTIV_V2PLUGIN_NAME=#{v2plugin_name}
 export CONTIV_DOCKER_SWARM=#{docker_swarm}
 export BUILD_VERSION=#{build_version}
 EOF
+git config --global http.proxy '#{http_proxy}'
+git config --global https.proxy '#{https_proxy}'
 source /etc/profile.d/envvar.sh
+echo "source /etc/profile.d/envvar.sh" >> /home/vagrant/.profile
 
 installed_go=$(go version | awk '{ print $3}')
 if [ "$installed_go" == "go#{go_version}" ]; then

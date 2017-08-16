@@ -31,23 +31,37 @@ import (
 	"github.com/ligato/cn-infra/logging"
 
 	agent_core "github.com/ligato/cn-infra/core"
-	//linux_dsl "github.com/ligato/vpp-agent/clientv1/linux"
 	"github.com/ligato/vpp-agent/clientv1/linux/localclient"
 	"github.com/ligato/vpp-agent/flavours/linuxlocal"
 	vpp_l2 "github.com/ligato/vpp-agent/plugins/defaultplugins/l2plugin/model/l2"
 	vpp_if "github.com/ligato/vpp-agent/plugins/defaultplugins/ifplugin/model/interfaces"
 	linux_if "github.com/ligato/vpp-agent/plugins/linuxplugin/model/interfaces"
 
-	// TODO: consider moving all communication with docker to the agent (i.e. create containerId-based namespace)
-	"github.com/contiv/netplugin/utils"
+	// TODO: move all communication with docker to the agent (i.e. create containerId-based namespace)
 	dockerclient "github.com/docker/docker/client"
 )
+
+// EndpointConfig stores configuration for a given endpoint.
+type EndpointConfig struct {
+	vppVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to AFPacket
+	endVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to the endpoint
+	afpacket *vpp_if.Interfaces_Interface // AFPacket interface
+}
+
+// NetworkConfig stores configuration for a given network.
+type NetworkConfig struct {
+	bd *vpp_l2.BridgeDomains_BridgeDomain // Bridge domain
+	vxlans []*vpp_if.Interfaces_Interface // List of all VXLAN tunnels
+	endpoints map[string]EndpointConfig   // Endpoint ID -> Endpoint Config
+}
 
 // VppDriverOperState carries operational state of the VppDriver.
 type VppDriverOperState struct {
 	core.CommonState
 
-	// Add any vppdriver specific state for endpoint/network etc
+	// Cached currently applied configuration of networks and endpoints.
+	LocalNetConfig map[string]NetworkConfig // Network ID -> Network config
+	localNetConfigMutex sync.Mutex
 }
 
 // Write the state
@@ -73,22 +87,6 @@ func (s *VppDriverOperState) Clear() error {
 	return s.StateDriver.ClearState(key)
 }
 
-// EndpointConfig stores configuration for a given endpoint.
-type EndpointConfig struct {
-	vppVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to AFPacket
-	endVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to the endpoint
-	afpacket *vpp_if.Interfaces_Interface // AFPacket interface
-}
-
-// NetworkConfig stores configuration for a given network.
-type NetworkConfig struct {
-	bd *vpp_l2.BridgeDomains_BridgeDomain // Bridge domain
-	vxlans []*vpp_if.Interfaces_Interface // List of all VXLAN tunnels
-	endpoints map[string]EndpointConfig   // Endpoint ID -> Endpoint Config
-}
-
-const vppDriverID agent_core.PluginName = "contiv-vpp-driver"
-
 // VppDriver holds the operational state of vpp driver
 type VppDriver struct {
 	lock     sync.Mutex         // lock for modifying shared state
@@ -98,10 +96,10 @@ type VppDriver struct {
 	localClusterIp string       // Local cluster IP address
 	clusterIPs []string         // Array of all cluster IPs
 
-	networkConfig map[string]NetworkConfig // Network ID -> Network config
-
-	dockerClient *dockerclient.Client
 	vppAgent *agent_core.Agent   // VPP agent
+
+	// TODO: remove once agent supports containerId-based namespaces
+	dockerClient *dockerclient.Client
 }
 
 // Init initializes the VPP driver with VPP agent.
@@ -115,15 +113,13 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	}
 	d.oper.StateDriver = info.StateDriver
 	d.localIP = info.VtepIP
-	// Temp fix for cluster IP assignment
+	// TODO: this is only a temporary fix for cluster IP assignment
 	if d.localIP != "192.168.2.10" {
 		d.localClusterIp = "192.168.3.11"
 	} else {
 		d.localClusterIp = "192.168.3.10"
 	}
 	d.clusterIPs = []string{"192.168.3.10", "192.168.3.11"}
-
-	d.networkConfig = make(map[string]NetworkConfig)
 
 	// restore the driver's runtime state if it exists
 	err := d.oper.Read(info.HostLabel)
@@ -135,11 +131,18 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 		// create the oper state as it is first time start up
 		d.oper.ID = info.HostLabel
 
+		d.oper.LocalNetConfig = make(map[string]NetworkConfig)
+
 		// write the oper
 		err = d.oper.Write()
 		if err != nil {
 			return err
 		}
+	}
+
+	// make sure LocalNetConfig exists
+	if d.oper.LocalNetConfig == nil {
+		d.oper.LocalNetConfig = make(map[string]NetworkConfig)
 		// write the oper
 		err = d.oper.Write()
 		if err != nil {
@@ -149,7 +152,7 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 
 	log.Infof("Initializing vppdriver")
 
-	d.dockerClient, err = utils.GetDockerClient()
+	d.dockerClient, err = dockerclient.NewClient("unix://var/run/docker.sock", "", nil, nil)
 	if err != nil {
 		log.Fatalf("Unable to connect to docker. Error %v", err)
 		return err
@@ -192,7 +195,10 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		log.Errorf("Failed to read network id='%s'", id)
 		return err
 	}
-	_, exists := d.networkConfig[id]
+
+	d.oper.localNetConfigMutex.Lock()
+	_, exists := d.oper.LocalNetConfig[id]
+	d.oper.localNetConfigMutex.Unlock()
 	if exists {
 		err = fmt.Errorf("Network id='%s' is already configured", id)
 		log.Error(err.Error())
@@ -232,13 +238,15 @@ func (d *VppDriver) CreateNetwork(id string) error {
 			netcfg.bd.Interfaces = append(netcfg.bd.Interfaces,
 				&vpp_l2.BridgeDomains_BridgeDomain_Interfaces{
 					Name: vxlanName,
-					BridgedVirtualInterface: true,
+					BridgedVirtualInterface: false,
 				})
 		}
 	}
 
 	// Prepare map for the endpoints
 	netcfg.endpoints = make(map[string]EndpointConfig)
+
+	log.Infof("Network config: %v", netcfg)
 
 	// Apply all changes
 	putReq := localclient.DataChangeRequest(vppDriverID).Put()
@@ -252,8 +260,10 @@ func (d *VppDriver) CreateNetwork(id string) error {
 		return err
 	}
 
-	// Store the configuration into the driver's cache
-	d.networkConfig[id] = netcfg
+	// Store the network configuration
+	d.oper.localNetConfigMutex.Lock()
+	d.oper.LocalNetConfig[id] = netcfg
+	d.oper.localNetConfigMutex.Unlock()
 
 	return nil
 }
@@ -262,19 +272,22 @@ func (d *VppDriver) CreateNetwork(id string) error {
 func (d *VppDriver) DeleteNetwork(id, subnet, nwType, encap string, pktTag, extPktTag int, gateway string, tenant string) error {
 	log.Infof("Delete network id='%s'", id)
 
-	netcfg, exists := d.networkConfig[id]
+	d.oper.localNetConfigMutex.Lock()
+	defer d.oper.localNetConfigMutex.Unlock()
+	netcfg, exists := d.oper.LocalNetConfig[id]
 	if !exists {
 		err := fmt.Errorf("Network id='%s' is not configured", id)
 		log.Error(err.Error())
 		return err
 	}
 
-
 	deleteReq := localclient.DataChangeRequest(vppDriverID).Delete()
-	deleteReq.BD(netcfg.bd.Name)
 	for _, vxlan := range netcfg.vxlans {
 		deleteReq.VppInterface(vxlan.Name)
 	}
+	deleteReq.BD(netcfg.bd.Name)
+
+	// TODO: should we also remove all attached endpoints?
 
 	err := deleteReq.Send().ReceiveReply()
 	if err != nil {
@@ -282,6 +295,7 @@ func (d *VppDriver) DeleteNetwork(id, subnet, nwType, encap string, pktTag, extP
 		return err
 	}
 
+	delete(d.oper.LocalNetConfig, id)
 	return nil
 }
 
@@ -293,29 +307,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	cfgEp.StateDriver = d.oper.StateDriver
 	err := cfgEp.Read(id)
 	if err != nil {
-		log.Errorf("Unable to get EpState %s. Err: %v", cfgEp.NetID, err)
-		return err
-	}
-
-	cfgNw := mastercfg.CfgNetworkState{}
-	cfgNw.StateDriver = d.oper.StateDriver
-	err = cfgNw.Read(cfgEp.NetID)
-	if err != nil {
-		log.Errorf("Unable to get network %s. Err: %v", cfgNw.NetworkName, err)
-		return err
-	}
-
-	netcfg, netExists := d.networkConfig[cfgNw.ID]
-	if !netExists {
-		err := fmt.Errorf("Network id='%s' is not configured", id)
-		log.Error(err.Error())
-		return err
-	}
-
-	_, epExists := netcfg.endpoints[cfgEp.ID]
-	if epExists {
-		err := fmt.Errorf("Endpoint id='%s' is already configured", id)
-		log.Error(err.Error())
+		log.Errorf("Unable to get EpState for id: %s. Err: %v", id, err)
 		return err
 	}
 
@@ -326,7 +318,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	}
 
 	vppVethName := cfgEp.EndpointID[:9]
-	endVethName := "veth-" + vppVethName
+	epVethName := "veth-" + vppVethName
 	afPacketName := "afpacket-" + vppVethName
 	epcfg := EndpointConfig{}
 
@@ -335,12 +327,12 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		Type:    linux_if.LinuxInterfaces_VETH,
 		Enabled: true,
 		Veth: &linux_if.LinuxInterfaces_Interface_Veth{
-			PeerIfName: endVethName,
+			PeerIfName: epVethName,
 		},
 	}
 
 	epcfg.endVeth = &linux_if.LinuxInterfaces_Interface{
-		Name:    endVethName,
+		Name:    epVethName,
 		Type:    linux_if.LinuxInterfaces_VETH,
 		Enabled: true,
 		Veth: &linux_if.LinuxInterfaces_Interface_Veth{
@@ -363,6 +355,26 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 			HostIfName: vppVethName,
 		},
 	}
+
+	log.Infof("Endpoint config: %v", epcfg)
+
+	d.oper.localNetConfigMutex.Lock()
+	netcfg, netExists := d.oper.LocalNetConfig[cfgEp.NetID]
+	if !netExists {
+		d.oper.localNetConfigMutex.Unlock()
+		err := fmt.Errorf("Network id='%s' is not configured", id)
+		log.Error(err.Error())
+		return err
+	}
+
+	_, epExists := netcfg.endpoints[cfgEp.ID]
+	if epExists {
+		d.oper.localNetConfigMutex.Unlock()
+		err := fmt.Errorf("Endpoint id='%s' is already configured", id)
+		log.Error(err.Error())
+		return err
+	}
+
 	netcfg.bd.Interfaces = append(netcfg.bd.Interfaces,
 								&vpp_l2.BridgeDomains_BridgeDomain_Interfaces{
 									Name: afPacketName,
@@ -378,9 +390,14 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 				Send().
 				ReceiveReply()
 	if err != nil {
+		d.oper.localNetConfigMutex.Unlock()
 		log.Errorf("Failed to create endpoint id='%s', Err: %v", id, err)
 		return err
 	}
+
+	// Store the endpoint configuration
+	netcfg.endpoints[id] = epcfg
+	d.oper.localNetConfigMutex.Unlock()
 
 	// Save the oper state
 	operEp := &drivers.OperEndpointState{
@@ -391,7 +408,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		MacAddress:  cfgEp.MacAddress,
 		IntfName:    cfgEp.IntfName,
 		HomingHost:  cfgEp.HomingHost,
-		PortName:    endVethName,
+		PortName:    epVethName,
 	}
 
 	operEp.StateDriver = d.oper.StateDriver
@@ -415,9 +432,67 @@ func (d *VppDriver) UpdateEndpointGroup(id string) error {
 	return nil
 }
 
-// DeleteEndpoint is not implemented.
-func (d *VppDriver) DeleteEndpoint(id string) (err error) {
-	log.Infof("Not implemented")
+// DeleteEndpoint deletes endpoint with a given ID.
+func (d *VppDriver) DeleteEndpoint(id string) error {
+	epOper := drivers.OperEndpointState{}
+	epOper.StateDriver = d.oper.StateDriver
+	err := epOper.Read(id)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		epOper.Clear()
+	}()
+
+	cfgEp := &mastercfg.CfgEndpointState{}
+	cfgEp.StateDriver = d.oper.StateDriver
+	err = cfgEp.Read(id)
+	if err != nil {
+		log.Errorf("Unable to get EpState for id: %s. Err: %v", id, err)
+		return err
+	}
+
+	d.oper.localNetConfigMutex.Lock()
+	defer d.oper.localNetConfigMutex.Unlock()
+	netcfg, netExists := d.oper.LocalNetConfig[cfgEp.NetID]
+	if !netExists {
+		err := fmt.Errorf("Network id='%s' is not configured", id)
+		log.Error(err.Error())
+		return err
+	}
+
+	epcfg, epExists := netcfg.endpoints[cfgEp.ID]
+	if !epExists {
+		err := fmt.Errorf("Endpoint id='%s' is not configured", id)
+		log.Error(err.Error())
+		return err
+	}
+
+	// Remove the associated afpacket interface from the bridge domain
+	origBfIfs := netcfg.bd.Interfaces
+	filteredBdIfs := []*vpp_l2.BridgeDomains_BridgeDomain_Interfaces{}
+	for _, bdIf := range origBfIfs {
+		if bdIf.Name != epcfg.afpacket.Name {
+			filteredBdIfs = append(filteredBdIfs, bdIf)
+		}
+	}
+	netcfg.bd.Interfaces = filteredBdIfs
+
+	err = localclient.DataChangeRequest(vppDriverID).
+				Put().
+				BD(netcfg.bd).
+				Delete().
+				VppInterface(epcfg.afpacket.Name).
+				LinuxInterface(epcfg.vppVeth.Name).
+				LinuxInterface(epcfg.endVeth.Name).
+				Send().ReceiveReply()
+	if err != nil {
+		netcfg.bd.Interfaces = origBfIfs
+		log.Errorf("Failed to delete endpoint id='%s', Err: %v", id, err)
+		return err
+	}
+
+	delete(netcfg.endpoints, id)
 	return nil
 }
 

@@ -152,8 +152,8 @@ class Node:
         self.runCmd("etcdctl ls /contiv > /dev/null 2>&1 && etcdctl rm --recursive /contiv")
         self.runCmd("etcdctl ls /contiv.io > /dev/null 2>&1 && etcdctl rm --recursive /contiv.io")
         self.runCmd("etcdctl ls /docker > /dev/null 2>&1 && etcdctl rm --recursive /docker")
-        self.runCmd("curl -X DELETE localhost:8500/v1/kv/contiv.io?recurse=true")
-        self.runCmd("curl -X DELETE localhost:8500/v1/kv/docker?recurse=true")
+        self.runCmd("curl --max-time 5 -X DELETE localhost:8500/v1/kv/contiv.io?recurse=true")
+        self.runCmd("curl --max-time 5 -X DELETE localhost:8500/v1/kv/docker?recurse=true")
 
     # Run container on a node
     def runContainer(self, imgName="ubuntu:14.04", cmdName="sh", networkName=None, serviceName=None, cntName=""):

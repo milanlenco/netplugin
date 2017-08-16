@@ -91,9 +91,8 @@ type VppDriver struct {
 	lock sync.Mutex         // lock for modifying shared state
 	oper VppDriverOperState // Oper state of the driver
 
-	localIP        string   // Local IP address
-	localClusterIp string   // Local cluster IP address
-	clusterIPs     []string // Array of all cluster IPs
+	localIP    string   // Local IP address
+	clusterIPS []string // Local cluster IP address
 
 	vppAgent *agent_core.Agent // VPP agent
 
@@ -112,13 +111,6 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	}
 	d.oper.StateDriver = info.StateDriver
 	d.localIP = info.VtepIP
-	// TODO: this is only a temporary fix for cluster IP assignment
-	if d.localIP != "192.168.2.10" {
-		d.localClusterIp = "192.168.3.11"
-	} else {
-		d.localClusterIp = "192.168.3.10"
-	}
-	d.clusterIPs = []string{"192.168.3.10", "192.168.3.11"}
 
 	// restore the driver's runtime state if it exists
 	err := d.oper.Read(info.HostLabel)
@@ -221,8 +213,8 @@ func (d *VppDriver) CreateNetwork(id string) error {
 
 	// Create VXLAN tunnels between all the nodes of the cluster
 	netcfg.vxlans = []*vpp_if.Interfaces_Interface{}
-	for i, nodeIP := range d.clusterIPs {
-		if nodeIP != d.localClusterIp {
+	for i, nodeIP := range d.clusterIPS {
+		if nodeIP != d.localIP {
 			vxlanName := fmt.Sprintf("vxlan-%s-%d", id, i)
 			netcfg.vxlans = append(netcfg.vxlans,
 				&vpp_if.Interfaces_Interface{
@@ -230,7 +222,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 					Type:    vpp_if.InterfaceType_VXLAN_TUNNEL,
 					Enabled: true,
 					Vxlan: &vpp_if.Interfaces_Interface_Vxlan{
-						SrcAddress: d.localClusterIp,
+						SrcAddress: d.localIP,
 						DstAddress: nodeIP,
 					},
 				})
@@ -525,7 +517,15 @@ func (d *VppDriver) DeleteHostAccPort(id string) (err error) {
 
 // AddPeerHost is not implemented.
 func (d *VppDriver) AddPeerHost(node core.ServiceInfo) error {
-	log.Infof("Not implemented")
+	// Nothing to do if this is our own IP
+	if node.HostAddr == d.localIP {
+		return nil
+	}
+
+	log.Infof("CreatePeerHost for %+v", node)
+
+	// Add the VTEP to the clusterIPS
+	d.clusterIPS = append(d.clusterIPS, node.HostAddr)
 	return nil
 }
 

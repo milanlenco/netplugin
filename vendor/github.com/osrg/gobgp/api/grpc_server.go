@@ -41,14 +41,17 @@ type Server struct {
 }
 
 func NewGrpcServer(b *server.BgpServer, hosts string) *Server {
+	return NewServer(b, grpc.NewServer(), hosts)
+}
+
+func NewServer(b *server.BgpServer, g *grpc.Server, hosts string) *Server {
 	grpc.EnableTracing = false
-	grpcServer := grpc.NewServer()
 	server := &Server{
 		bgpServer:  b,
-		grpcServer: grpcServer,
+		grpcServer: g,
 		hosts:      hosts,
 	}
-	RegisterGobgpApiServer(grpcServer, server)
+	RegisterGobgpApiServer(g, server)
 	return server
 }
 
@@ -122,6 +125,7 @@ func (s *Server) GetNeighbor(ctx context.Context, arg *GetNeighborRequest) (*Get
 				PrefixLimits:      prefixLimits,
 				LocalAddress:      localAddress,
 				NeighborInterface: pconf.Config.NeighborInterface,
+				Vrf:               pconf.Config.Vrf,
 			},
 			Info: &PeerState{
 				BgpState:   bgp.FSMState(s.SessionState.ToInt()).String(),
@@ -273,7 +277,7 @@ func (s *Server) GetRib(ctx context.Context, arg *GetRibRequest) (*GetRibRespons
 
 	return &GetRibResponse{Table: &Table{
 		Type:         arg.Table.Type,
-		Family:       arg.Table.Family,
+		Family:       uint32(tbl.GetRoutefamily()),
 		Destinations: dsts},
 	}, err
 }
@@ -700,6 +704,7 @@ func (s *Server) EnableZebra(ctx context.Context, arg *EnableZebraRequest) (*Ena
 	return &EnableZebraResponse{}, s.bgpServer.StartZebraClient(&config.ZebraConfig{
 		Url: arg.Url,
 		RedistributeRouteTypeList: l,
+		Version:                   uint8(arg.Version),
 	})
 }
 
@@ -717,6 +722,7 @@ func (s *Server) GetVrf(ctx context.Context, arg *GetVrfRequest) (*GetVrfRespons
 		return &Vrf{
 			Name:     v.Name,
 			Rd:       rd,
+			Id:       v.Id,
 			ImportRt: f(v.ImportRt),
 			ExportRt: f(v.ExportRt),
 		}
@@ -750,7 +756,7 @@ func (s *Server) AddVrf(ctx context.Context, arg *AddVrfRequest) (r *AddVrfRespo
 	if err != nil {
 		return &AddVrfResponse{}, err
 	}
-	return &AddVrfResponse{}, s.bgpServer.AddVrf(arg.Vrf.Name, rd, im, ex)
+	return &AddVrfResponse{}, s.bgpServer.AddVrf(arg.Vrf.Name, arg.Vrf.Id, rd, im, ex)
 }
 
 func (s *Server) DeleteVrf(ctx context.Context, arg *DeleteVrfRequest) (*DeleteVrfResponse, error) {
@@ -772,6 +778,7 @@ func (s *Server) AddNeighbor(ctx context.Context, arg *AddNeighborRequest) (*Add
 			pconf.Config.PeerGroup = a.Conf.PeerGroup
 			pconf.Config.NeighborAddress = a.Conf.NeighborAddress
 			pconf.Config.NeighborInterface = a.Conf.NeighborInterface
+			pconf.Config.Vrf = a.Conf.Vrf
 		}
 		if a.Timers != nil && a.Timers.Config != nil {
 			pconf.Timers.Config.ConnectRetry = float64(a.Timers.Config.ConnectRetry)
@@ -900,6 +907,11 @@ func NewDefinedSetFromApiStruct(a *DefinedSet) (table.DefinedSet, error) {
 			ExtCommunitySetName: a.Name,
 			ExtCommunityList:    a.List,
 		})
+	case table.DEFINED_TYPE_LARGE_COMMUNITY:
+		return table.NewLargeCommunitySet(config.LargeCommunitySet{
+			LargeCommunitySetName: a.Name,
+			LargeCommunityList:    a.List,
+		})
 	default:
 		return nil, fmt.Errorf("invalid defined type")
 	}
@@ -952,6 +964,14 @@ func (s *Server) GetDefinedSet(ctx context.Context, arg *GetDefinedSetRequest) (
 			Type: DefinedType_EXT_COMMUNITY,
 			Name: cs.ExtCommunitySetName,
 			List: cs.ExtCommunityList,
+		}
+		sets = append(sets, ad)
+	}
+	for _, cs := range cd.BgpDefinedSets.LargeCommunitySets {
+		ad := &DefinedSet{
+			Type: DefinedType_LARGE_COMMUNITY,
+			Name: cs.LargeCommunitySetName,
+			List: cs.LargeCommunityList,
 		}
 		sets = append(sets, ad)
 	}
@@ -1029,6 +1049,12 @@ func toStatementApi(s *config.Statement) *Statement {
 			Name: s.Conditions.BgpConditions.MatchExtCommunitySet.ExtCommunitySet,
 		}
 	}
+	if s.Conditions.BgpConditions.MatchLargeCommunitySet.LargeCommunitySet != "" {
+		cs.CommunitySet = &MatchSet{
+			Type: MatchType(s.Conditions.BgpConditions.MatchLargeCommunitySet.MatchSetOptions.ToInt()),
+			Name: s.Conditions.BgpConditions.MatchLargeCommunitySet.LargeCommunitySet,
+		}
+	}
 	if s.Conditions.BgpConditions.RouteType != "" {
 		cs.RouteType = Conditions_RouteType(s.Conditions.BgpConditions.RouteType.ToInt())
 	}
@@ -1089,6 +1115,15 @@ func toStatementApi(s *config.Statement) *Statement {
 			return &CommunityAction{
 				Type:        CommunityActionType(config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetExtCommunity.Options)]),
 				Communities: s.Actions.BgpActions.SetExtCommunity.SetExtCommunityMethod.CommunitiesList,
+			}
+		}(),
+		LargeCommunity: func() *CommunityAction {
+			if len(s.Actions.BgpActions.SetLargeCommunity.SetLargeCommunityMethod.CommunitiesList) == 0 {
+				return nil
+			}
+			return &CommunityAction{
+				Type:        CommunityActionType(config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetLargeCommunity.Options)]),
+				Communities: s.Actions.BgpActions.SetLargeCommunity.SetLargeCommunityMethod.CommunitiesList,
 			}
 		}(),
 		Nexthop: func() *NexthopAction {
@@ -1250,6 +1285,21 @@ func NewExtCommunityConditionFromApiStruct(a *MatchSet) (*table.ExtCommunityCond
 	return table.NewExtCommunityCondition(c)
 }
 
+func NewLargeCommunityConditionFromApiStruct(a *MatchSet) (*table.LargeCommunityCondition, error) {
+	if a == nil {
+		return nil, nil
+	}
+	typ, err := toConfigMatchSetOption(a.Type)
+	if err != nil {
+		return nil, err
+	}
+	c := config.MatchLargeCommunitySet{
+		LargeCommunitySet: a.Name,
+		MatchSetOptions:   typ,
+	}
+	return table.NewLargeCommunityCondition(c)
+}
+
 func NewRoutingActionFromApiStruct(a RouteAction) (*table.RoutingAction, error) {
 	if a == RouteAction_NONE {
 		return nil, nil
@@ -1287,11 +1337,23 @@ func NewExtCommunityActionFromApiStruct(a *CommunityAction) (*table.ExtCommunity
 	})
 }
 
+func NewLargeCommunityActionFromApiStruct(a *CommunityAction) (*table.LargeCommunityAction, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return table.NewLargeCommunityAction(config.SetLargeCommunity{
+		Options: config.IntToBgpSetCommunityOptionTypeMap[int(a.Type)],
+		SetLargeCommunityMethod: config.SetLargeCommunityMethod{
+			CommunitiesList: a.Communities,
+		},
+	})
+}
+
 func NewMedActionFromApiStruct(a *MedAction) (*table.MedAction, error) {
 	if a == nil {
 		return nil, nil
 	}
-	return table.NewMedActionFromApiStruct(table.MedActionType(a.Type), int(a.Value)), nil
+	return table.NewMedActionFromApiStruct(table.MedActionType(a.Type), a.Value), nil
 }
 
 func NewLocalPrefActionFromApiStruct(a *LocalPrefAction) (*table.LocalPrefAction, error) {
@@ -1364,6 +1426,9 @@ func NewStatementFromApiStruct(a *Statement) (*table.Statement, error) {
 			func() (table.Condition, error) {
 				return NewExtCommunityConditionFromApiStruct(a.Conditions.ExtCommunitySet)
 			},
+			func() (table.Condition, error) {
+				return NewLargeCommunityConditionFromApiStruct(a.Conditions.LargeCommunitySet)
+			},
 		}
 		cs = make([]table.Condition, 0, len(cfs))
 		for _, f := range cfs {
@@ -1387,6 +1452,9 @@ func NewStatementFromApiStruct(a *Statement) (*table.Statement, error) {
 			},
 			func() (table.Action, error) {
 				return NewExtCommunityActionFromApiStruct(a.Actions.ExtCommunity)
+			},
+			func() (table.Action, error) {
+				return NewLargeCommunityActionFromApiStruct(a.Actions.LargeCommunity)
 			},
 			func() (table.Action, error) {
 				return NewMedActionFromApiStruct(a.Actions.Med)
@@ -1629,8 +1697,6 @@ func (s *Server) GetServer(ctx context.Context, arg *GetServerRequest) (*GetServ
 			RouterId:         g.Config.RouterId,
 			ListenPort:       g.Config.Port,
 			ListenAddresses:  g.Config.LocalAddressList,
-			MplsLabelMin:     g.MplsLabelRange.MinLabel,
-			MplsLabelMax:     g.MplsLabelRange.MaxLabel,
 			UseMultiplePaths: g.UseMultiplePaths.Config.Enabled,
 		},
 	}, nil
@@ -1662,10 +1728,6 @@ func (s *Server) StartServer(ctx context.Context, arg *StartServerRequest) (*Sta
 				Port:             g.ListenPort,
 				LocalAddressList: g.ListenAddresses,
 			},
-			MplsLabelRange: config.MplsLabelRange{
-				MinLabel: g.MplsLabelMin,
-				MaxLabel: g.MplsLabelMax,
-			},
 			AfiSafis: families,
 			UseMultiplePaths: config.UseMultiplePaths{
 				Config: config.UseMultiplePathsConfig{
@@ -1679,4 +1741,38 @@ func (s *Server) StartServer(ctx context.Context, arg *StartServerRequest) (*Sta
 
 func (s *Server) StopServer(ctx context.Context, arg *StopServerRequest) (*StopServerResponse, error) {
 	return &StopServerResponse{}, s.bgpServer.Stop()
+}
+
+func (s *Server) GetRibInfo(ctx context.Context, arg *GetRibInfoRequest) (*GetRibInfoResponse, error) {
+	family := bgp.RouteFamily(arg.Info.Family)
+	var in bool
+	var err error
+	var info *table.TableInfo
+	switch arg.Info.Type {
+	case Resource_GLOBAL, Resource_LOCAL:
+		info, err = s.bgpServer.GetRibInfo(arg.Info.Name, family)
+	case Resource_ADJ_IN:
+		in = true
+		fallthrough
+	case Resource_ADJ_OUT:
+		info, err = s.bgpServer.GetAdjRibInfo(arg.Info.Name, family, in)
+	default:
+		return nil, fmt.Errorf("unsupported resource type: %s", arg.Info.Type)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &GetRibInfoResponse{
+		Info: &TableInfo{
+			Type:           arg.Info.Type,
+			Family:         arg.Info.Family,
+			Name:           arg.Info.Name,
+			NumDestination: uint64(info.NumDestination),
+			NumPath:        uint64(info.NumPath),
+			NumAccepted:    uint64(info.NumAccepted),
+		},
+	}, nil
+
 }

@@ -965,6 +965,8 @@ type ZebraState struct {
 	Url string `mapstructure:"url"`
 	// original -> gobgp:redistribute-route-type
 	RedistributeRouteTypeList []InstallProtocolType `mapstructure:"redistribute-route-type-list"`
+	// original -> gobgp:version
+	Version uint8 `mapstructure:"version"`
 }
 
 func (lhs *ZebraState) Equal(rhs *ZebraState) bool {
@@ -985,6 +987,9 @@ func (lhs *ZebraState) Equal(rhs *ZebraState) bool {
 			return false
 		}
 	}
+	if lhs.Version != rhs.Version {
+		return false
+	}
 	return true
 }
 
@@ -997,6 +1002,8 @@ type ZebraConfig struct {
 	Url string `mapstructure:"url"`
 	// original -> gobgp:redistribute-route-type
 	RedistributeRouteTypeList []InstallProtocolType `mapstructure:"redistribute-route-type-list"`
+	// original -> gobgp:version
+	Version uint8 `mapstructure:"version"`
 }
 
 func (lhs *ZebraConfig) Equal(rhs *ZebraConfig) bool {
@@ -1016,6 +1023,9 @@ func (lhs *ZebraConfig) Equal(rhs *ZebraConfig) bool {
 		if l != rhs.RedistributeRouteTypeList[idx] {
 			return false
 		}
+	}
+	if lhs.Version != rhs.Version {
+		return false
 	}
 	return true
 }
@@ -2512,6 +2522,8 @@ type NeighborState struct {
 	Flops uint32 `mapstructure:"flops"`
 	// original -> gobgp:neighbor-interface
 	NeighborInterface string `mapstructure:"neighbor-interface"`
+	// original -> gobgp:vrf
+	Vrf string `mapstructure:"vrf"`
 	// original -> gobgp:remote-router-id
 	RemoteRouterId string `mapstructure:"remote-router-id"`
 }
@@ -2591,6 +2603,9 @@ func (lhs *NeighborState) Equal(rhs *NeighborState) bool {
 	if lhs.NeighborInterface != rhs.NeighborInterface {
 		return false
 	}
+	if lhs.Vrf != rhs.Vrf {
+		return false
+	}
 	if lhs.RemoteRouterId != rhs.RemoteRouterId {
 		return false
 	}
@@ -2628,6 +2643,8 @@ type NeighborConfig struct {
 	AdminDown bool `mapstructure:"admin-down"`
 	// original -> gobgp:neighbor-interface
 	NeighborInterface string `mapstructure:"neighbor-interface"`
+	// original -> gobgp:vrf
+	Vrf string `mapstructure:"vrf"`
 }
 
 func (lhs *NeighborConfig) Equal(rhs *NeighborConfig) bool {
@@ -2668,6 +2685,9 @@ func (lhs *NeighborConfig) Equal(rhs *NeighborConfig) bool {
 		return false
 	}
 	if lhs.NeighborInterface != rhs.NeighborInterface {
+		return false
+	}
+	if lhs.Vrf != rhs.Vrf {
 		return false
 	}
 	return true
@@ -2770,22 +2790,81 @@ func (lhs *Neighbor) Equal(rhs *Neighbor) bool {
 	return true
 }
 
-//struct for container gobgp:mpls-label-range
-type MplsLabelRange struct {
-	// original -> gobgp:min-label
-	MinLabel uint32 `mapstructure:"min-label"`
-	// original -> gobgp:max-label
-	MaxLabel uint32 `mapstructure:"max-label"`
+//struct for container gobgp:state
+type LongLivedGracefulRestartState struct {
+	// original -> gobgp:enabled
+	//gobgp:enabled's original type is boolean
+	Enabled bool `mapstructure:"enabled"`
+	// original -> gobgp:received
+	//gobgp:received's original type is boolean
+	Received bool `mapstructure:"received"`
+	// original -> gobgp:advertised
+	//gobgp:advertised's original type is boolean
+	Advertised bool `mapstructure:"advertised"`
+	// original -> gobgp:peer-restart-time
+	PeerRestartTime uint32 `mapstructure:"peer-restart-time"`
+	// original -> gobgp:peer-restart-timer-expired
+	//gobgp:peer-restart-timer-expired's original type is boolean
+	PeerRestartTimerExpired bool `mapstructure:"peer-restart-timer-expired"`
 }
 
-func (lhs *MplsLabelRange) Equal(rhs *MplsLabelRange) bool {
+func (lhs *LongLivedGracefulRestartState) Equal(rhs *LongLivedGracefulRestartState) bool {
 	if lhs == nil || rhs == nil {
 		return false
 	}
-	if lhs.MinLabel != rhs.MinLabel {
+	if lhs.Enabled != rhs.Enabled {
 		return false
 	}
-	if lhs.MaxLabel != rhs.MaxLabel {
+	if lhs.Received != rhs.Received {
+		return false
+	}
+	if lhs.Advertised != rhs.Advertised {
+		return false
+	}
+	if lhs.PeerRestartTime != rhs.PeerRestartTime {
+		return false
+	}
+	if lhs.PeerRestartTimerExpired != rhs.PeerRestartTimerExpired {
+		return false
+	}
+	return true
+}
+
+//struct for container gobgp:config
+type LongLivedGracefulRestartConfig struct {
+	// original -> gobgp:enabled
+	//gobgp:enabled's original type is boolean
+	Enabled bool `mapstructure:"enabled"`
+	// original -> gobgp:restart-time
+	RestartTime uint32 `mapstructure:"restart-time"`
+}
+
+func (lhs *LongLivedGracefulRestartConfig) Equal(rhs *LongLivedGracefulRestartConfig) bool {
+	if lhs == nil || rhs == nil {
+		return false
+	}
+	if lhs.Enabled != rhs.Enabled {
+		return false
+	}
+	if lhs.RestartTime != rhs.RestartTime {
+		return false
+	}
+	return true
+}
+
+//struct for container gobgp:long-lived-graceful-restart
+type LongLivedGracefulRestart struct {
+	// original -> gobgp:long-lived-graceful-restart-config
+	Config LongLivedGracefulRestartConfig `mapstructure:"config"`
+	// original -> gobgp:long-lived-graceful-restart-state
+	State LongLivedGracefulRestartState `mapstructure:"state"`
+}
+
+func (lhs *LongLivedGracefulRestart) Equal(rhs *LongLivedGracefulRestart) bool {
+	if lhs == nil || rhs == nil {
+		return false
+	}
+	if !lhs.Config.Equal(&(rhs.Config)) {
 		return false
 	}
 	return true
@@ -3454,6 +3533,8 @@ type AfiSafi struct {
 	PrefixLimit PrefixLimit `mapstructure:"prefix-limit"`
 	// original -> gobgp:route-target-membership
 	RouteTargetMembership RouteTargetMembership `mapstructure:"route-target-membership"`
+	// original -> gobgp:long-lived-graceful-restart
+	LongLivedGracefulRestart LongLivedGracefulRestart `mapstructure:"long-lived-graceful-restart"`
 }
 
 func (lhs *AfiSafi) Equal(rhs *AfiSafi) bool {
@@ -3511,6 +3592,9 @@ func (lhs *AfiSafi) Equal(rhs *AfiSafi) bool {
 	if !lhs.RouteTargetMembership.Equal(&(rhs.RouteTargetMembership)) {
 		return false
 	}
+	if !lhs.LongLivedGracefulRestart.Equal(&(rhs.LongLivedGracefulRestart)) {
+		return false
+	}
 	return true
 }
 
@@ -3539,6 +3623,12 @@ type GracefulRestartState struct {
 	Mode Mode `mapstructure:"mode"`
 	// original -> gobgp:deferral-time
 	DeferralTime uint16 `mapstructure:"deferral-time"`
+	// original -> gobgp:notification-enabled
+	//gobgp:notification-enabled's original type is boolean
+	NotificationEnabled bool `mapstructure:"notification-enabled"`
+	// original -> gobgp:long-lived-enabled
+	//gobgp:long-lived-enabled's original type is boolean
+	LongLivedEnabled bool `mapstructure:"long-lived-enabled"`
 }
 
 func (lhs *GracefulRestartState) Equal(rhs *GracefulRestartState) bool {
@@ -3572,6 +3662,12 @@ func (lhs *GracefulRestartState) Equal(rhs *GracefulRestartState) bool {
 	if lhs.DeferralTime != rhs.DeferralTime {
 		return false
 	}
+	if lhs.NotificationEnabled != rhs.NotificationEnabled {
+		return false
+	}
+	if lhs.LongLivedEnabled != rhs.LongLivedEnabled {
+		return false
+	}
 	return true
 }
 
@@ -3590,6 +3686,12 @@ type GracefulRestartConfig struct {
 	HelperOnly bool `mapstructure:"helper-only"`
 	// original -> gobgp:deferral-time
 	DeferralTime uint16 `mapstructure:"deferral-time"`
+	// original -> gobgp:notification-enabled
+	//gobgp:notification-enabled's original type is boolean
+	NotificationEnabled bool `mapstructure:"notification-enabled"`
+	// original -> gobgp:long-lived-enabled
+	//gobgp:long-lived-enabled's original type is boolean
+	LongLivedEnabled bool `mapstructure:"long-lived-enabled"`
 }
 
 func (lhs *GracefulRestartConfig) Equal(rhs *GracefulRestartConfig) bool {
@@ -3609,6 +3711,12 @@ func (lhs *GracefulRestartConfig) Equal(rhs *GracefulRestartConfig) bool {
 		return false
 	}
 	if lhs.DeferralTime != rhs.DeferralTime {
+		return false
+	}
+	if lhs.NotificationEnabled != rhs.NotificationEnabled {
+		return false
+	}
+	if lhs.LongLivedEnabled != rhs.LongLivedEnabled {
 		return false
 	}
 	return true
@@ -4170,8 +4278,6 @@ type Global struct {
 	AfiSafis []AfiSafi `mapstructure:"afi-safis"`
 	// original -> rpol:apply-policy
 	ApplyPolicy ApplyPolicy `mapstructure:"apply-policy"`
-	// original -> gobgp:mpls-label-range
-	MplsLabelRange MplsLabelRange `mapstructure:"mpls-label-range"`
 }
 
 func (lhs *Global) Equal(rhs *Global) bool {
@@ -4213,9 +4319,6 @@ func (lhs *Global) Equal(rhs *Global) bool {
 		}
 	}
 	if !lhs.ApplyPolicy.Equal(&(rhs.ApplyPolicy)) {
-		return false
-	}
-	if !lhs.MplsLabelRange.Equal(&(rhs.MplsLabelRange)) {
 		return false
 	}
 	return true
@@ -4332,6 +4435,48 @@ func (lhs *Bgp) Equal(rhs *Bgp) bool {
 		return false
 	}
 	if !lhs.Collector.Equal(&(rhs.Collector)) {
+		return false
+	}
+	return true
+}
+
+//struct for container gobgp:set-large-community-method
+type SetLargeCommunityMethod struct {
+	// original -> gobgp:communities
+	CommunitiesList []string `mapstructure:"communities-list"`
+}
+
+func (lhs *SetLargeCommunityMethod) Equal(rhs *SetLargeCommunityMethod) bool {
+	if lhs == nil || rhs == nil {
+		return false
+	}
+	if len(lhs.CommunitiesList) != len(rhs.CommunitiesList) {
+		return false
+	}
+	for idx, l := range lhs.CommunitiesList {
+		if l != rhs.CommunitiesList[idx] {
+			return false
+		}
+	}
+	return true
+}
+
+//struct for container gobgp:set-large-community
+type SetLargeCommunity struct {
+	// original -> gobgp:set-large-community-method
+	SetLargeCommunityMethod SetLargeCommunityMethod `mapstructure:"set-large-community-method"`
+	// original -> gobgp:options
+	Options BgpSetCommunityOptionType `mapstructure:"options"`
+}
+
+func (lhs *SetLargeCommunity) Equal(rhs *SetLargeCommunity) bool {
+	if lhs == nil || rhs == nil {
+		return false
+	}
+	if !lhs.SetLargeCommunityMethod.Equal(&(rhs.SetLargeCommunityMethod)) {
+		return false
+	}
+	if lhs.Options != rhs.Options {
 		return false
 	}
 	return true
@@ -4473,6 +4618,8 @@ type BgpActions struct {
 	SetNextHop BgpNextHopType `mapstructure:"set-next-hop"`
 	// original -> bgp-pol:set-med
 	SetMed BgpSetMedType `mapstructure:"set-med"`
+	// original -> gobgp:set-large-community
+	SetLargeCommunity SetLargeCommunity `mapstructure:"set-large-community"`
 }
 
 func (lhs *BgpActions) Equal(rhs *BgpActions) bool {
@@ -4498,6 +4645,9 @@ func (lhs *BgpActions) Equal(rhs *BgpActions) bool {
 		return false
 	}
 	if lhs.SetMed != rhs.SetMed {
+		return false
+	}
+	if !lhs.SetLargeCommunity.Equal(&(rhs.SetLargeCommunity)) {
 		return false
 	}
 	return true
@@ -4563,6 +4713,27 @@ func (lhs *Actions) Equal(rhs *Actions) bool {
 		return false
 	}
 	if !lhs.BgpActions.Equal(&(rhs.BgpActions)) {
+		return false
+	}
+	return true
+}
+
+//struct for container gobgp:match-large-community-set
+type MatchLargeCommunitySet struct {
+	// original -> gobgp:large-community-set
+	LargeCommunitySet string `mapstructure:"large-community-set"`
+	// original -> rpol:match-set-options
+	MatchSetOptions MatchSetOptionsType `mapstructure:"match-set-options"`
+}
+
+func (lhs *MatchLargeCommunitySet) Equal(rhs *MatchLargeCommunitySet) bool {
+	if lhs == nil || rhs == nil {
+		return false
+	}
+	if lhs.LargeCommunitySet != rhs.LargeCommunitySet {
+		return false
+	}
+	if lhs.MatchSetOptions != rhs.MatchSetOptions {
 		return false
 	}
 	return true
@@ -4700,6 +4871,8 @@ type BgpConditions struct {
 	RouteType RouteType `mapstructure:"route-type"`
 	// original -> gobgp:rpki-validation-result
 	RpkiValidationResult RpkiValidationResultType `mapstructure:"rpki-validation-result"`
+	// original -> gobgp:match-large-community-set
+	MatchLargeCommunitySet MatchLargeCommunitySet `mapstructure:"match-large-community-set"`
 }
 
 func (lhs *BgpConditions) Equal(rhs *BgpConditions) bool {
@@ -4750,6 +4923,9 @@ func (lhs *BgpConditions) Equal(rhs *BgpConditions) bool {
 		return false
 	}
 	if lhs.RpkiValidationResult != rhs.RpkiValidationResult {
+		return false
+	}
+	if !lhs.MatchLargeCommunitySet.Equal(&(rhs.MatchLargeCommunitySet)) {
 		return false
 	}
 	return true
@@ -4935,6 +5111,32 @@ func (lhs *PolicyDefinition) Equal(rhs *PolicyDefinition) bool {
 	return true
 }
 
+//struct for container gobgp:large-community-set
+type LargeCommunitySet struct {
+	// original -> gobgp:large-community-set-name
+	LargeCommunitySetName string `mapstructure:"large-community-set-name"`
+	// original -> gobgp:large-community
+	LargeCommunityList []string `mapstructure:"large-community-list"`
+}
+
+func (lhs *LargeCommunitySet) Equal(rhs *LargeCommunitySet) bool {
+	if lhs == nil || rhs == nil {
+		return false
+	}
+	if lhs.LargeCommunitySetName != rhs.LargeCommunitySetName {
+		return false
+	}
+	if len(lhs.LargeCommunityList) != len(rhs.LargeCommunityList) {
+		return false
+	}
+	for idx, l := range lhs.LargeCommunityList {
+		if l != rhs.LargeCommunityList[idx] {
+			return false
+		}
+	}
+	return true
+}
+
 //struct for container bgp-pol:as-path-set
 type AsPathSet struct {
 	// original -> bgp-pol:as-path-set-name
@@ -5021,6 +5223,8 @@ type BgpDefinedSets struct {
 	ExtCommunitySets []ExtCommunitySet `mapstructure:"ext-community-sets"`
 	// original -> bgp-pol:as-path-sets
 	AsPathSets []AsPathSet `mapstructure:"as-path-sets"`
+	// original -> gobgp:large-community-sets
+	LargeCommunitySets []LargeCommunitySet `mapstructure:"large-community-sets"`
 }
 
 func (lhs *BgpDefinedSets) Equal(rhs *BgpDefinedSets) bool {
@@ -5069,6 +5273,22 @@ func (lhs *BgpDefinedSets) Equal(rhs *BgpDefinedSets) bool {
 		}
 		for i, r := range rhs.AsPathSets {
 			if l, y := lmap[mapkey(i, string(r.AsPathSetName))]; !y {
+				return false
+			} else if !r.Equal(l) {
+				return false
+			}
+		}
+	}
+	if len(lhs.LargeCommunitySets) != len(rhs.LargeCommunitySets) {
+		return false
+	}
+	{
+		lmap := make(map[string]*LargeCommunitySet)
+		for i, l := range lhs.LargeCommunitySets {
+			lmap[mapkey(i, string(l.LargeCommunitySetName))] = &lhs.LargeCommunitySets[i]
+		}
+		for i, r := range rhs.LargeCommunitySets {
+			if l, y := lmap[mapkey(i, string(r.LargeCommunitySetName))]; !y {
 				return false
 			} else if !r.Equal(l) {
 				return false

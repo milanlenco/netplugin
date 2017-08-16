@@ -70,6 +70,7 @@ service GobgpApi {
   rpc AddPolicyAssignment(AddPolicyAssignmentRequest) returns (AddPolicyAssignmentResponse) {}
   rpc DeletePolicyAssignment(DeletePolicyAssignmentRequest) returns (DeletePolicyAssignmentResponse) {}
   rpc ReplacePolicyAssignment(ReplacePolicyAssignmentRequest) returns (ReplacePolicyAssignmentResponse) {}
+  rpc GetRibInfo(GetRibInfoRequest) returns (GetRibInfoResponse) {}
 }
 
 message GetNeighborRequest {
@@ -293,6 +294,7 @@ message SoftResetRpkiResponse {
 message EnableZebraRequest {
   string url = 1;
   repeated string route_types = 2;
+  uint32 version = 3;
 }
 
 message EnableZebraResponse {
@@ -567,6 +569,7 @@ message PeerConf {
   repeated PrefixLimit prefix_limits = 14;
   string local_address = 15;
   string neighbor_interface = 16;
+  string vrf = 17;
 }
 
 message EbgpMultihop {
@@ -672,6 +675,7 @@ enum DefinedType {
   AS_PATH = 3;
   COMMUNITY = 4;
   EXT_COMMUNITY = 5;
+  LARGE_COMMUNITY = 6;
 }
 
 message DefinedSet {
@@ -718,6 +722,7 @@ message Conditions {
     ROUTE_TYPE_LOCAL = 3;
   }
   RouteType route_type = 8;
+  MatchSet large_community_set = 9;
 }
 
 enum RouteAction {
@@ -770,6 +775,7 @@ message Actions {
   CommunityAction ext_community = 5;
   NexthopAction nexthop = 6;
   LocalPrefAction local_pref = 7;
+  CommunityAction large_community = 8;
 }
 
 message Statement {
@@ -818,6 +824,7 @@ message Vrf {
   bytes rd = 2;
   repeated bytes import_rt = 3;
   repeated bytes export_rt = 4;
+  uint32 id = 5;
 }
 
 message Global {
@@ -826,7 +833,22 @@ message Global {
   int32 listen_port = 3;
   repeated string listen_addresses = 4;
   repeated uint32 families = 5;
-  uint32 mpls_label_min = 6;
-  uint32 mpls_label_max = 7;
-  bool use_multiple_paths = 8;
+  bool use_multiple_paths = 6;
+}
+
+message TableInfo {
+  Resource type = 1;
+  string name = 2;
+  uint32 family = 3;
+  uint64 num_destination = 4;
+  uint64 num_path = 5;
+  uint64 num_accepted = 6; // only meaningful when type == ADJ_IN
+}
+
+message GetRibInfoRequest {
+    TableInfo info  = 1;
+}
+
+message GetRibInfoResponse {
+    TableInfo info = 1;
 }

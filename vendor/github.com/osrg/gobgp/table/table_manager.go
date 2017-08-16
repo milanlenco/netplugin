@@ -112,22 +112,16 @@ func ProcessMessage(m *bgp.BGPMessage, peerInfo *PeerInfo, timestamp time.Time) 
 }
 
 type TableManager struct {
-	Tables    map[bgp.RouteFamily]*Table
-	Vrfs      map[string]*Vrf
-	minLabel  uint32
-	maxLabel  uint32
-	nextLabel uint32
-	rfList    []bgp.RouteFamily
+	Tables map[bgp.RouteFamily]*Table
+	Vrfs   map[string]*Vrf
+	rfList []bgp.RouteFamily
 }
 
-func NewTableManager(rfList []bgp.RouteFamily, minLabel, maxLabel uint32) *TableManager {
+func NewTableManager(rfList []bgp.RouteFamily) *TableManager {
 	t := &TableManager{
-		Tables:    make(map[bgp.RouteFamily]*Table),
-		Vrfs:      make(map[string]*Vrf),
-		minLabel:  minLabel,
-		maxLabel:  maxLabel,
-		nextLabel: minLabel,
-		rfList:    rfList,
+		Tables: make(map[bgp.RouteFamily]*Table),
+		Vrfs:   make(map[string]*Vrf),
+		rfList: rfList,
 	}
 	for _, rf := range rfList {
 		t.Tables[rf] = NewTable(rf)
@@ -139,32 +133,7 @@ func (manager *TableManager) GetRFlist() []bgp.RouteFamily {
 	return manager.rfList
 }
 
-func (manager *TableManager) GetNextLabel(name, nexthop string, isWithdraw bool) (uint32, error) {
-	var label uint32
-	var err error
-	vrf, ok := manager.Vrfs[name]
-	if !ok {
-		return label, fmt.Errorf("vrf %s not found", name)
-	}
-	label, ok = vrf.LabelMap[nexthop]
-	if !ok {
-		label, err = manager.getNextLabel()
-		vrf.LabelMap[nexthop] = label
-	}
-	return label, err
-
-}
-
-func (manager *TableManager) getNextLabel() (uint32, error) {
-	if manager.nextLabel > manager.maxLabel {
-		return 0, fmt.Errorf("ran out of label resource. max label %d", manager.maxLabel)
-	}
-	label := manager.nextLabel
-	manager.nextLabel += 1
-	return label, nil
-}
-
-func (manager *TableManager) AddVrf(name string, rd bgp.RouteDistinguisherInterface, importRt, exportRt []bgp.ExtendedCommunityInterface, info *PeerInfo) ([]*Path, error) {
+func (manager *TableManager) AddVrf(name string, id uint32, rd bgp.RouteDistinguisherInterface, importRt, exportRt []bgp.ExtendedCommunityInterface, info *PeerInfo) ([]*Path, error) {
 	if _, ok := manager.Vrfs[name]; ok {
 		return nil, fmt.Errorf("vrf %s already exists", name)
 	}
@@ -177,10 +146,10 @@ func (manager *TableManager) AddVrf(name string, rd bgp.RouteDistinguisherInterf
 	}).Debugf("add vrf")
 	manager.Vrfs[name] = &Vrf{
 		Name:     name,
+		Id:       id,
 		Rd:       rd,
 		ImportRt: importRt,
 		ExportRt: exportRt,
-		LabelMap: make(map[string]uint32),
 	}
 	msgs := make([]*Path, 0, len(importRt))
 	nexthop := "0.0.0.0"
@@ -376,4 +345,12 @@ func (manager *TableManager) GetDestination(path *Path) *Destination {
 		return nil
 	}
 	return t.GetDestination(path.getPrefix())
+}
+
+func (manager *TableManager) TableInfo(id string, family bgp.RouteFamily) (*TableInfo, error) {
+	t, ok := manager.Tables[family]
+	if !ok {
+		return nil, fmt.Errorf("address family %s is not configured", family)
+	}
+	return t.Info(id), nil
 }

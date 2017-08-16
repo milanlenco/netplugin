@@ -205,15 +205,35 @@ const (
 type BGPCapabilityCode uint8
 
 const (
-	BGP_CAP_MULTIPROTOCOL          BGPCapabilityCode = 1
-	BGP_CAP_ROUTE_REFRESH          BGPCapabilityCode = 2
-	BGP_CAP_CARRYING_LABEL_INFO    BGPCapabilityCode = 4
-	BGP_CAP_GRACEFUL_RESTART       BGPCapabilityCode = 64
-	BGP_CAP_FOUR_OCTET_AS_NUMBER   BGPCapabilityCode = 65
-	BGP_CAP_ADD_PATH               BGPCapabilityCode = 69
-	BGP_CAP_ENHANCED_ROUTE_REFRESH BGPCapabilityCode = 70
-	BGP_CAP_ROUTE_REFRESH_CISCO    BGPCapabilityCode = 128
+	BGP_CAP_MULTIPROTOCOL               BGPCapabilityCode = 1
+	BGP_CAP_ROUTE_REFRESH               BGPCapabilityCode = 2
+	BGP_CAP_CARRYING_LABEL_INFO         BGPCapabilityCode = 4
+	BGP_CAP_GRACEFUL_RESTART            BGPCapabilityCode = 64
+	BGP_CAP_FOUR_OCTET_AS_NUMBER        BGPCapabilityCode = 65
+	BGP_CAP_ADD_PATH                    BGPCapabilityCode = 69
+	BGP_CAP_ENHANCED_ROUTE_REFRESH      BGPCapabilityCode = 70
+	BGP_CAP_ROUTE_REFRESH_CISCO         BGPCapabilityCode = 128
+	BGP_CAP_LONG_LIVED_GRACEFUL_RESTART BGPCapabilityCode = 129
 )
+
+var CapNameMap = map[BGPCapabilityCode]string{
+	BGP_CAP_MULTIPROTOCOL:               "multiprotocol",
+	BGP_CAP_ROUTE_REFRESH:               "route-refresh",
+	BGP_CAP_CARRYING_LABEL_INFO:         "carrying-label-info",
+	BGP_CAP_GRACEFUL_RESTART:            "graceful-restart",
+	BGP_CAP_FOUR_OCTET_AS_NUMBER:        "4-octet-as",
+	BGP_CAP_ADD_PATH:                    "add-path",
+	BGP_CAP_ENHANCED_ROUTE_REFRESH:      "enhanced-route-refresh",
+	BGP_CAP_ROUTE_REFRESH_CISCO:         "cisco-route-refresh",
+	BGP_CAP_LONG_LIVED_GRACEFUL_RESTART: "long-lived-graceful-restart",
+}
+
+func (c BGPCapabilityCode) String() string {
+	if n, y := CapNameMap[c]; y {
+		return n
+	}
+	return fmt.Sprintf("UnknownCapability(%d)", c)
+}
 
 type ParameterCapabilityInterface interface {
 	DecodeFromBytes([]byte) error
@@ -406,10 +426,13 @@ func (c *CapGracefulRestart) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewCapGracefulRestart(restarting bool, time uint16, tuples []*CapGracefulRestartTuple) *CapGracefulRestart {
+func NewCapGracefulRestart(restarting, notification bool, time uint16, tuples []*CapGracefulRestartTuple) *CapGracefulRestart {
 	flags := 0
 	if restarting {
 		flags = 0x08
+	}
+	if notification {
+		flags |= 0x04
 	}
 	return &CapGracefulRestart{
 		DefaultParameterCapability: DefaultParameterCapability{
@@ -556,6 +579,98 @@ func NewCapRouteRefreshCisco() *CapRouteRefreshCisco {
 	}
 }
 
+type CapLongLivedGracefulRestartTuple struct {
+	AFI         uint16
+	SAFI        uint8
+	Flags       uint8
+	RestartTime uint32
+}
+
+func (c *CapLongLivedGracefulRestartTuple) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		RouteFamily RouteFamily `json:"route_family"`
+		Flags       uint8       `json:"flags"`
+		RestartTime uint32      `json:"restart_time"`
+	}{
+		RouteFamily: AfiSafiToRouteFamily(c.AFI, c.SAFI),
+		Flags:       c.Flags,
+		RestartTime: c.RestartTime,
+	})
+}
+
+func NewCapLongLivedGracefulRestartTuple(rf RouteFamily, forward bool, restartTime uint32) *CapLongLivedGracefulRestartTuple {
+	afi, safi := RouteFamilyToAfiSafi(rf)
+	flags := 0
+	if forward {
+		flags = 0x80
+	}
+	return &CapLongLivedGracefulRestartTuple{
+		AFI:         afi,
+		SAFI:        safi,
+		Flags:       uint8(flags),
+		RestartTime: restartTime,
+	}
+}
+
+type CapLongLivedGracefulRestart struct {
+	DefaultParameterCapability
+	Tuples []*CapLongLivedGracefulRestartTuple
+}
+
+func (c *CapLongLivedGracefulRestart) DecodeFromBytes(data []byte) error {
+	c.DefaultParameterCapability.DecodeFromBytes(data)
+	data = data[2:]
+
+	valueLen := int(c.CapLen)
+	if valueLen%7 != 0 || len(data) < valueLen {
+		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "invalid length of long lived graceful restart capablity")
+	}
+	for i := valueLen; i >= 7; i -= 7 {
+		t := &CapLongLivedGracefulRestartTuple{
+			binary.BigEndian.Uint16(data),
+			data[2],
+			data[3],
+			uint32(data[4])<<16 | uint32(data[5])<<8 | uint32(data[6]),
+		}
+		c.Tuples = append(c.Tuples, t)
+		data = data[7:]
+	}
+	return nil
+}
+
+func (c *CapLongLivedGracefulRestart) Serialize() ([]byte, error) {
+	buf := make([]byte, 7*len(c.Tuples))
+	for idx, t := range c.Tuples {
+		binary.BigEndian.PutUint16(buf[idx*7:], t.AFI)
+		buf[idx*7+2] = t.SAFI
+		buf[idx*7+3] = t.Flags
+		buf[idx*7+4] = uint8((t.RestartTime >> 16) & 0xff)
+		buf[idx*7+5] = uint8((t.RestartTime >> 8) & 0xff)
+		buf[idx*7+6] = uint8(t.RestartTime & 0xff)
+	}
+	c.DefaultParameterCapability.CapValue = buf
+	return c.DefaultParameterCapability.Serialize()
+}
+
+func (c *CapLongLivedGracefulRestart) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Code   BGPCapabilityCode                   `json:"code"`
+		Tuples []*CapLongLivedGracefulRestartTuple `json:"tuples"`
+	}{
+		Code:   c.Code(),
+		Tuples: c.Tuples,
+	})
+}
+
+func NewCapLongLivedGracefulRestart(tuples []*CapLongLivedGracefulRestartTuple) *CapLongLivedGracefulRestart {
+	return &CapLongLivedGracefulRestart{
+		DefaultParameterCapability: DefaultParameterCapability{
+			CapCode: BGP_CAP_LONG_LIVED_GRACEFUL_RESTART,
+		},
+		Tuples: tuples,
+	}
+}
+
 type CapUnknown struct {
 	DefaultParameterCapability
 }
@@ -582,6 +697,8 @@ func DecodeCapability(data []byte) (ParameterCapabilityInterface, error) {
 		c = &CapEnhancedRouteRefresh{}
 	case BGP_CAP_ROUTE_REFRESH_CISCO:
 		c = &CapRouteRefreshCisco{}
+	case BGP_CAP_LONG_LIVED_GRACEFUL_RESTART:
+		c = &CapLongLivedGracefulRestart{}
 	default:
 		c = &CapUnknown{}
 	}
@@ -833,6 +950,10 @@ func NewIPAddrPrefix(length uint8, prefix string) *IPAddrPrefix {
 	}
 }
 
+func isIPv4MappedIPv6(ip net.IP) bool {
+	return len(ip) == net.IPv6len && ip.To4() != nil
+}
+
 type IPv6AddrPrefix struct {
 	IPAddrPrefix
 }
@@ -842,18 +963,11 @@ func (r *IPv6AddrPrefix) AFI() uint16 {
 }
 
 func (r *IPv6AddrPrefix) String() string {
-	isZero := func(p net.IP) bool {
-		for i := 0; i < len(p); i++ {
-			if p[i] != 0 {
-				return false
-			}
-		}
-		return true
-	}(r.Prefix[0:10])
-	if isZero && r.Prefix[10] == 0xff && r.Prefix[11] == 0xff {
-		return fmt.Sprintf("::ffff:%s/%d", r.Prefix.String(), r.Length)
+	prefix := r.Prefix.String()
+	if isIPv4MappedIPv6(r.Prefix) {
+		prefix = "::ffff:" + prefix
 	}
-	return fmt.Sprintf("%s/%d", r.Prefix.String(), r.Length)
+	return fmt.Sprintf("%s/%d", prefix, r.Length)
 }
 
 func NewIPv6AddrPrefix(length uint8, prefix string) *IPv6AddrPrefix {
@@ -1281,8 +1395,12 @@ func (l *LabeledVPNIPAddrPrefix) SAFI() uint8 {
 }
 
 func (l *LabeledVPNIPAddrPrefix) String() string {
+	return fmt.Sprintf("%s:%s", l.RD, l.IPPrefix())
+}
+
+func (l *LabeledVPNIPAddrPrefix) IPPrefix() string {
 	masklen := l.IPAddrPrefixDefault.Length - uint8(8*(l.Labels.Len()+l.RD.Len()))
-	return fmt.Sprintf("%s:%s/%d", l.RD, l.IPAddrPrefixDefault.Prefix, masklen)
+	return fmt.Sprintf("%s/%d", l.IPAddrPrefixDefault.Prefix, masklen)
 }
 
 func (l *LabeledVPNIPAddrPrefix) MarshalJSON() ([]byte, error) {
@@ -1379,7 +1497,21 @@ func (l *LabeledIPAddrPrefix) Serialize() ([]byte, error) {
 }
 
 func (l *LabeledIPAddrPrefix) String() string {
-	return fmt.Sprintf("%s/%d", l.Prefix.String(), int(l.Length)-l.Labels.Len()*8)
+	prefix := l.Prefix.String()
+	if isIPv4MappedIPv6(l.Prefix) {
+		prefix = "::ffff:" + prefix
+	}
+	return fmt.Sprintf("%s/%d", prefix, int(l.Length)-l.Labels.Len()*8)
+}
+
+func (l *LabeledIPAddrPrefix) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Prefix string   `json:"prefix"`
+		Labels []uint32 `json:"labels"`
+	}{
+		Prefix: l.String(),
+		Labels: l.Labels.Labels,
+	})
 }
 
 func NewLabeledIPAddrPrefix(length uint8, prefix string, label MPLSLabelStack) *LabeledIPAddrPrefix {
@@ -1893,14 +2025,6 @@ func (er *EVPNEthernetSegmentRoute) Serialize() ([]byte, error) {
 	return buf, nil
 }
 
-type EVPNRouteTypeInterface interface {
-	DecodeFromBytes([]byte) error
-	Serialize() ([]byte, error)
-	String() string
-	rd() RouteDistinguisherInterface
-	MarshalJSON() ([]byte, error)
-}
-
 func (er *EVPNEthernetSegmentRoute) String() string {
 	return fmt.Sprintf("[type:esi][rd:%s][esi:%d][ip:%s]", er.RD, er.ESI, er.IPAddress)
 }
@@ -1921,6 +2045,129 @@ func (er *EVPNEthernetSegmentRoute) rd() RouteDistinguisherInterface {
 	return er.RD
 }
 
+type EVPNIPPrefixRoute struct {
+	RD             RouteDistinguisherInterface
+	ESI            EthernetSegmentIdentifier
+	ETag           uint32
+	IPPrefixLength uint8
+	IPPrefix       net.IP
+	GWIPAddress    net.IP
+	Label          uint32
+}
+
+func (er *EVPNIPPrefixRoute) DecodeFromBytes(data []byte) error {
+	if len(data) < 30 { // rd + esi + etag + prefix-len + ipv4 addr + label
+		return NewMessageError(BGP_ERROR_UPDATE_MESSAGE_ERROR, BGP_ERROR_SUB_MALFORMED_ATTRIBUTE_LIST, nil, "Not all EVPN IP Prefix Route bytes available")
+	}
+	er.RD = GetRouteDistinguisher(data)
+	data = data[er.RD.Len():]
+	err := er.ESI.DecodeFromBytes(data)
+	if err != nil {
+		return err
+	}
+	data = data[10:]
+	er.ETag = binary.BigEndian.Uint32(data[0:4])
+	data = data[4:]
+	er.IPPrefixLength = data[0]
+	addrLen := 4
+	data = data[1:]
+	if len(data) > 19 { // ipv6 addr + label
+		addrLen = 16
+	}
+	er.IPPrefix = net.IP(data[:addrLen])
+	data = data[addrLen:]
+	switch {
+	case len(data) == 3:
+		er.Label = labelDecode(data)
+	case len(data) == addrLen+3:
+		er.GWIPAddress = net.IP(data[:addrLen])
+		er.Label = labelDecode(data[addrLen:])
+	default:
+		return NewMessageError(BGP_ERROR_UPDATE_MESSAGE_ERROR, BGP_ERROR_SUB_MALFORMED_ATTRIBUTE_LIST, nil, "Not all EVPN IP Prefix Route bytes available")
+	}
+	return nil
+}
+
+func (er *EVPNIPPrefixRoute) Serialize() ([]byte, error) {
+	var buf []byte
+	var err error
+	if er.RD != nil {
+		buf, err = er.RD.Serialize()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		buf = make([]byte, 8)
+	}
+	tbuf, err := er.ESI.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	buf = append(buf, tbuf...)
+
+	tbuf = make([]byte, 4)
+	binary.BigEndian.PutUint32(tbuf, er.ETag)
+	buf = append(buf, tbuf...)
+
+	buf = append(buf, er.IPPrefixLength)
+
+	if er.IPPrefix == nil {
+		return nil, NewMessageError(BGP_ERROR_UPDATE_MESSAGE_ERROR, BGP_ERROR_SUB_MALFORMED_ATTRIBUTE_LIST, nil, fmt.Sprintf("IP Prefix is nil"))
+	} else if er.IPPrefix.To4() != nil {
+		buf = append(buf, []byte(er.IPPrefix.To4())...)
+	} else {
+		buf = append(buf, []byte(er.IPPrefix)...)
+	}
+
+	if er.GWIPAddress != nil {
+		if er.GWIPAddress.To4() != nil {
+			buf = append(buf, []byte(er.GWIPAddress.To4())...)
+		} else {
+			buf = append(buf, []byte(er.GWIPAddress.To16())...)
+		}
+	}
+
+	tbuf = make([]byte, 3)
+	labelSerialize(er.Label, tbuf)
+	buf = append(buf, tbuf...)
+
+	return buf, nil
+}
+
+func (er *EVPNIPPrefixRoute) String() string {
+	return fmt.Sprintf("[type:Prefix][rd:%s][esi:%s][etag:%d][prefix:%s/%d][gw:%s][label:%d]", er.RD, er.ESI.String(), er.ETag, er.IPPrefix, er.IPPrefixLength, er.GWIPAddress, er.Label)
+}
+
+func (er *EVPNIPPrefixRoute) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		RD      RouteDistinguisherInterface `json:"rd"`
+		ESI     string                      `json:"esi"`
+		Etag    uint32                      `json:"etag"`
+		Prefix  string                      `json:"prefix"`
+		Gateway string                      `json:"gateway"`
+		Label   uint32                      `json:"label"`
+	}{
+		RD:      er.RD,
+		ESI:     er.ESI.String(),
+		Etag:    er.ETag,
+		Prefix:  fmt.Sprintf("%s/%d", er.IPPrefix, er.IPPrefixLength),
+		Gateway: er.GWIPAddress.String(),
+		Label:   er.Label,
+	})
+}
+
+func (er *EVPNIPPrefixRoute) rd() RouteDistinguisherInterface {
+	return er.RD
+}
+
+type EVPNRouteTypeInterface interface {
+	DecodeFromBytes([]byte) error
+	Serialize() ([]byte, error)
+	String() string
+	rd() RouteDistinguisherInterface
+	MarshalJSON() ([]byte, error)
+}
+
 func getEVPNRouteType(t uint8) (EVPNRouteTypeInterface, error) {
 	switch t {
 	case EVPN_ROUTE_TYPE_ETHERNET_AUTO_DISCOVERY:
@@ -1931,6 +2178,8 @@ func getEVPNRouteType(t uint8) (EVPNRouteTypeInterface, error) {
 		return &EVPNMulticastEthernetTagRoute{}, nil
 	case EVPN_ETHERNET_SEGMENT_ROUTE:
 		return &EVPNEthernetSegmentRoute{}, nil
+	case EVPN_IP_PREFIX:
+		return &EVPNIPPrefixRoute{}, nil
 	}
 	return nil, NewMessageError(BGP_ERROR_UPDATE_MESSAGE_ERROR, BGP_ERROR_SUB_MALFORMED_ATTRIBUTE_LIST, nil, fmt.Sprintf("Unknown EVPN Route type: %d", t))
 }
@@ -1940,6 +2189,7 @@ const (
 	EVPN_ROUTE_TYPE_MAC_IP_ADVERTISEMENT    = 2
 	EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG   = 3
 	EVPN_ETHERNET_SEGMENT_ROUTE             = 4
+	EVPN_IP_PREFIX                          = 5
 )
 
 type EVPNNLRI struct {
@@ -2221,24 +2471,18 @@ func flowSpecIpProtoParser(rf RouteFamily, args []string) (FlowSpecComponentInte
 	if len(args) < 2 || args[0] != FlowSpecNameMap[FLOW_SPEC_TYPE_IP_PROTO] {
 		return nil, fmt.Errorf("invalid ip-proto format")
 	}
-	items := make([]*FlowSpecComponentItem, 0)
-	eq := 0x1
-	for _, v := range args[1:] {
-		if v == "" {
-			continue
-		}
-		p, ok := ProtocolValueMap[v]
-		if ok {
-			items = append(items, NewFlowSpecComponentItem(eq, int(p)))
-			continue
-		}
-		i, err := strconv.ParseUint(v, 10, 8)
-		if err != nil {
-			return nil, fmt.Errorf("invalid ip-proto format: failed to parse %s", v)
-		}
-		items = append(items, NewFlowSpecComponentItem(eq, int(i)))
+	s := strings.Join(args, " ")
+	for i, name := range ProtocolNameMap {
+		s = strings.Replace(s, name, fmt.Sprintf("%d", i), -1)
 	}
-	return NewFlowSpecComponent(FLOW_SPEC_TYPE_IP_PROTO, items), nil
+	args = strings.Split(s, " ")
+	validationFunc := func(i int) error {
+		if 0 < i && i < 255 {
+			return nil
+		}
+		return fmt.Errorf("ip protocol range exceeded")
+	}
+	return doFlowSpecNumericParser(0, args, validationFunc)
 }
 
 func flowSpecTcpFlagParser(rf RouteFamily, args []string) (FlowSpecComponentInterface, error) {
@@ -2271,26 +2515,21 @@ func flowSpecTcpFlagParser(rf RouteFamily, args []string) (FlowSpecComponentInte
 }
 
 func flowSpecEtherTypeParser(rf RouteFamily, args []string) (FlowSpecComponentInterface, error) {
-	ss := make([]string, 0, len(EthernetTypeNameMap))
-	for _, v := range EthernetTypeNameMap {
-		ss = append(ss, v)
+	if len(args) < 2 || args[0] != FlowSpecNameMap[FLOW_SPEC_TYPE_ETHERNET_TYPE] {
+		return nil, fmt.Errorf("invalid ethernet-type format")
 	}
-	protos := strings.Join(ss, "|")
-	exp := regexp.MustCompile(fmt.Sprintf("^%s (((%s) )*)(%s)$", FlowSpecNameMap[FLOW_SPEC_TYPE_ETHERNET_TYPE], protos, protos))
-	elems := exp.FindStringSubmatch(strings.Join(args, " "))
-	items := make([]*FlowSpecComponentItem, 0)
-	eq := 0x1
-	if elems[1] != "" {
-		for _, v := range strings.Split(elems[1], " ") {
-			p, ok := EthernetTypeValueMap[v]
-			if !ok {
-				continue
-			}
-			items = append(items, NewFlowSpecComponentItem(eq, int(p)))
+	s := strings.Join(args, " ")
+	for i, name := range EthernetTypeNameMap {
+		s = strings.Replace(s, name, fmt.Sprintf("%d", i), -1)
+	}
+	args = strings.Split(s, " ")
+	validationFunc := func(i int) error {
+		if 0 < i && i < 0xffff {
+			return nil
 		}
+		return fmt.Errorf("ethernet type range exceeded")
 	}
-	items = append(items, NewFlowSpecComponentItem(eq, int(EthernetTypeValueMap[elems[4]])))
-	return NewFlowSpecComponent(FLOW_SPEC_TYPE_ETHERNET_TYPE, items), nil
+	return doFlowSpecNumericParser(0, args, validationFunc)
 }
 
 func doFlowSpecNumericParser(rf RouteFamily, args []string, validationFunc func(int) error) (FlowSpecComponentInterface, error) {
@@ -2838,7 +3077,7 @@ func formatNumeric(op int, value int) string {
 }
 
 func formatProto(op int, value int) string {
-	return fmt.Sprintf(" %s", Protocol(value).String())
+	return fmt.Sprintf("%s%s", formatNumericOp(op), Protocol(value).String())
 }
 
 func formatFlag(op int, value int) string {
@@ -2883,7 +3122,7 @@ func formatFragment(op int, value int) string {
 }
 
 func formatEtherType(op int, value int) string {
-	return fmt.Sprintf(" %s", EthernetType(value).String())
+	return fmt.Sprintf("%s%s", formatNumericOp(op), EthernetType(value).String())
 }
 
 var flowSpecFormatMap = map[BGPFlowSpecType]func(op int, value int) string{
@@ -3193,10 +3432,9 @@ func CompareFlowSpecNLRI(n, m *FlowSpecNLRI) (int, error) {
 		w := shorter[idx]
 		if v.Type() < w.Type() {
 			return invert, nil
-		} else if w.Type() > v.Type() {
+		} else if v.Type() > w.Type() {
 			return invert * -1, nil
-		}
-		if v.Type() == FLOW_SPEC_TYPE_DST_PREFIX || v.Type() == FLOW_SPEC_TYPE_SRC_PREFIX {
+		} else if v.Type() == FLOW_SPEC_TYPE_DST_PREFIX || v.Type() == FLOW_SPEC_TYPE_SRC_PREFIX {
 			// RFC5575 5.1
 			//
 			// For IP prefix values (IP destination and source prefix) precedence is
@@ -3354,24 +3592,32 @@ func NewFlowSpecL2VPN(rd RouteDistinguisherInterface, value []FlowSpecComponentI
 }
 
 type OpaqueNLRI struct {
-	Length uint8
+	Length uint16
 	Key    []byte
+	Value  []byte
 }
 
 func (n *OpaqueNLRI) DecodeFromBytes(data []byte) error {
-	n.Length = data[0]
-	if len(data)-1 < int(n.Length) {
+	if len(data) < 2 {
 		return NewMessageError(BGP_ERROR_UPDATE_MESSAGE_ERROR, BGP_ERROR_SUB_MALFORMED_ATTRIBUTE_LIST, nil, "Not all OpaqueNLRI bytes available")
 	}
-	n.Key = data[1 : 1+n.Length]
+	n.Length = binary.BigEndian.Uint16(data[0:2])
+	if len(data)-2 < int(n.Length) {
+		return NewMessageError(BGP_ERROR_UPDATE_MESSAGE_ERROR, BGP_ERROR_SUB_MALFORMED_ATTRIBUTE_LIST, nil, "Not all OpaqueNLRI bytes available")
+	}
+	n.Key = data[2 : 2+n.Length]
+	n.Value = data[2+n.Length:]
 	return nil
 }
 
 func (n *OpaqueNLRI) Serialize() ([]byte, error) {
-	if len(n.Key) > math.MaxUint8 {
+	if len(n.Key) > math.MaxUint16 {
 		return nil, fmt.Errorf("Key length too big")
 	}
-	return append([]byte{byte(len(n.Key))}, n.Key...), nil
+	buf := make([]byte, 2)
+	binary.BigEndian.PutUint16(buf, uint16(len(n.Key)))
+	buf = append(buf, n.Key...)
+	return append(buf, n.Value...), nil
 }
 
 func (n *OpaqueNLRI) AFI() uint16 {
@@ -3383,24 +3629,27 @@ func (n *OpaqueNLRI) SAFI() uint8 {
 }
 
 func (n *OpaqueNLRI) Len() int {
-	return 1 + len(n.Key)
+	return 2 + len(n.Key) + len(n.Value)
 }
 
 func (n *OpaqueNLRI) String() string {
-	return string(n.Key)
+	return fmt.Sprintf("%s", n.Key)
 }
 
 func (n *OpaqueNLRI) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Key string `json:"key"`
+		Key   string `json:"key"`
+		Value string `json:"value"`
 	}{
-		Key: n.String(),
+		Key:   string(n.Key),
+		Value: string(n.Value),
 	})
 }
 
-func NewOpaqueNLRI(key []byte) *OpaqueNLRI {
+func NewOpaqueNLRI(key, value []byte) *OpaqueNLRI {
 	return &OpaqueNLRI{
-		Key: key,
+		Key:   key,
+		Value: value,
 	}
 }
 
@@ -3595,8 +3844,8 @@ const (
 	BGP_ATTR_TYPE_TUNNEL_ENCAP
 	_
 	_
-	BGP_ATTR_TYPE_AIGP                     // = 26
-	BGP_ATTR_TYPE_OPAQUE_VALUE BGPAttrType = 41
+	BGP_ATTR_TYPE_AIGP                        // = 26
+	BGP_ATTR_TYPE_LARGE_COMMUNITY BGPAttrType = 32
 )
 
 // NOTIFICATION Error Code  RFC 4271 4.5.
@@ -3672,6 +3921,7 @@ const (
 	BGP_ERROR_SUB_OTHER_CONFIGURATION_CHANGE
 	BGP_ERROR_SUB_CONNECTION_COLLISION_RESOLUTION
 	BGP_ERROR_SUB_OUT_OF_RESOURCES
+	BGP_ERROR_SUB_HARD_RESET //draft-ietf-idr-bgp-gr-notification-07
 )
 
 // NOTIFICATION Error Subcode for BGP_ERROR_ROUTE_REFRESH
@@ -3782,7 +4032,7 @@ var PathAttrFlags map[BGPAttrType]BGPAttrFlag = map[BGPAttrType]BGPAttrFlag{
 	BGP_ATTR_TYPE_PMSI_TUNNEL:          BGP_ATTR_FLAG_TRANSITIVE | BGP_ATTR_FLAG_OPTIONAL,
 	BGP_ATTR_TYPE_TUNNEL_ENCAP:         BGP_ATTR_FLAG_TRANSITIVE | BGP_ATTR_FLAG_OPTIONAL,
 	BGP_ATTR_TYPE_AIGP:                 BGP_ATTR_FLAG_OPTIONAL,
-	BGP_ATTR_TYPE_OPAQUE_VALUE:         BGP_ATTR_FLAG_TRANSITIVE | BGP_ATTR_FLAG_OPTIONAL,
+	BGP_ATTR_TYPE_LARGE_COMMUNITY:      BGP_ATTR_FLAG_TRANSITIVE | BGP_ATTR_FLAG_OPTIONAL,
 }
 
 type PathAttributeInterface interface {
@@ -4569,6 +4819,7 @@ const (
 	COMMUNITY_ROUTE_FILTER_v6                               = 0xffff0005
 	COMMUNITY_LLGR_STALE                                    = 0xffff0006
 	COMMUNITY_NO_LLGR                                       = 0xffff0007
+	COMMUNITY_BLACKHOLE                                     = 0xffff029a
 	COMMUNITY_NO_EXPORT                                     = 0xffffff01
 	COMMUNITY_NO_ADVERTISE                                  = 0xffffff02
 	COMMUNITY_NO_EXPORT_SUBCONFED                           = 0xffffff03
@@ -4585,6 +4836,7 @@ var WellKnownCommunityNameMap = map[WellKnownCommunity]string{
 	COMMUNITY_ROUTE_FILTER_v6:            "route-filter-v6",
 	COMMUNITY_LLGR_STALE:                 "llgr-stale",
 	COMMUNITY_NO_LLGR:                    "no-llgr",
+	COMMUNITY_BLACKHOLE:                  "blackhole",
 	COMMUNITY_NO_EXPORT:                  "no-export",
 	COMMUNITY_NO_ADVERTISE:               "no-advertise",
 	COMMUNITY_NO_EXPORT_SUBCONFED:        "no-export-subconfed",
@@ -4602,6 +4854,7 @@ var WellKnownCommunityValueMap = map[string]WellKnownCommunity{
 	WellKnownCommunityNameMap[COMMUNITY_LLGR_STALE]:                 COMMUNITY_LLGR_STALE,
 	WellKnownCommunityNameMap[COMMUNITY_NO_LLGR]:                    COMMUNITY_NO_LLGR,
 	WellKnownCommunityNameMap[COMMUNITY_NO_EXPORT]:                  COMMUNITY_NO_EXPORT,
+	WellKnownCommunityNameMap[COMMUNITY_BLACKHOLE]:                  COMMUNITY_BLACKHOLE,
 	WellKnownCommunityNameMap[COMMUNITY_NO_ADVERTISE]:               COMMUNITY_NO_ADVERTISE,
 	WellKnownCommunityNameMap[COMMUNITY_NO_EXPORT_SUBCONFED]:        COMMUNITY_NO_EXPORT_SUBCONFED,
 	WellKnownCommunityNameMap[COMMUNITY_NO_PEER]:                    COMMUNITY_NO_PEER,
@@ -6642,32 +6895,122 @@ func NewPathAttributeAigp(values []AigpTLV) *PathAttributeAigp {
 	}
 }
 
-type PathAttributeOpaqueValue struct {
+type LargeCommunity struct {
+	ASN        uint32
+	LocalData1 uint32
+	LocalData2 uint32
+}
+
+func (c *LargeCommunity) Serialize() ([]byte, error) {
+	buf := make([]byte, 12)
+	binary.BigEndian.PutUint32(buf, c.ASN)
+	binary.BigEndian.PutUint32(buf[4:], c.LocalData1)
+	binary.BigEndian.PutUint32(buf[8:], c.LocalData2)
+	return buf, nil
+}
+
+func (c *LargeCommunity) String() string {
+	return fmt.Sprintf("%d:%d:%d", c.ASN, c.LocalData1, c.LocalData2)
+}
+
+func NewLargeCommunity(asn, data1, data2 uint32) *LargeCommunity {
+	return &LargeCommunity{
+		ASN:        asn,
+		LocalData1: data1,
+		LocalData2: data2,
+	}
+}
+
+func ParseLargeCommunity(value string) (*LargeCommunity, error) {
+	elems := strings.Split(value, ":")
+	if len(elems) != 3 {
+		return nil, fmt.Errorf("invalid large community format")
+	}
+	v := make([]uint32, 0, 3)
+	for _, elem := range elems {
+		e, err := strconv.ParseUint(elem, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid large community format")
+		}
+		v = append(v, uint32(e))
+	}
+	return NewLargeCommunity(v[0], v[1], v[2]), nil
+}
+
+type PathAttributeLargeCommunities struct {
 	PathAttribute
+	Values []*LargeCommunity
 }
 
-func (p *PathAttributeOpaqueValue) String() string {
-	return fmt.Sprintf("{Value: %s}", string(p.Value))
+func (p *PathAttributeLargeCommunities) DecodeFromBytes(data []byte) error {
+	err := p.PathAttribute.DecodeFromBytes(data)
+	if err != nil {
+		return err
+	}
+
+	rest := p.PathAttribute.Value
+
+	if len(rest)%12 != 0 {
+		eCode := uint8(BGP_ERROR_UPDATE_MESSAGE_ERROR)
+		eSubCode := uint8(BGP_ERROR_SUB_ATTRIBUTE_LENGTH_ERROR)
+		return NewMessageError(eCode, eSubCode, nil, "large communities length isn't correct")
+	}
+
+	p.Values = make([]*LargeCommunity, 0, len(rest)/12)
+
+	for len(rest) >= 12 {
+		asn := binary.BigEndian.Uint32(rest[:4])
+		data1 := binary.BigEndian.Uint32(rest[4:8])
+		data2 := binary.BigEndian.Uint32(rest[8:12])
+		p.Values = append(p.Values, NewLargeCommunity(asn, data1, data2))
+		rest = rest[12:]
+	}
+	return nil
 }
 
-func (p *PathAttributeOpaqueValue) MarshalJSON() ([]byte, error) {
+func (p *PathAttributeLargeCommunities) Serialize() ([]byte, error) {
+	buf := make([]byte, 0)
+	for _, t := range p.Values {
+		bbuf, err := t.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		buf = append(buf, bbuf...)
+	}
+	p.PathAttribute.Value = buf
+	return p.PathAttribute.Serialize()
+}
+
+func (p *PathAttributeLargeCommunities) String() string {
+	buf := bytes.NewBuffer(make([]byte, 0, 32))
+	buf.WriteString("{LargeCommunity: [ ")
+	ss := []string{}
+	for _, v := range p.Values {
+		ss = append(ss, v.String())
+	}
+	buf.WriteString(strings.Join(ss, ", "))
+	buf.WriteString("]}")
+	return buf.String()
+}
+
+func (p *PathAttributeLargeCommunities) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Type  BGPAttrType `json:"type"`
-		Value string      `json:"value"`
+		Type  BGPAttrType       `json:"type"`
+		Value []*LargeCommunity `json:"value"`
 	}{
 		Type:  p.GetType(),
-		Value: string(p.Value),
+		Value: p.Values,
 	})
 }
 
-func NewPathAttributeOpaqueValue(value []byte) *PathAttributeOpaqueValue {
-	t := BGP_ATTR_TYPE_OPAQUE_VALUE
-	return &PathAttributeOpaqueValue{
+func NewPathAttributeLargeCommunities(values []*LargeCommunity) *PathAttributeLargeCommunities {
+	t := BGP_ATTR_TYPE_LARGE_COMMUNITY
+	return &PathAttributeLargeCommunities{
 		PathAttribute: PathAttribute{
 			Flags: PathAttrFlags[t],
 			Type:  t,
-			Value: value,
 		},
+		Values: values,
 	}
 }
 
@@ -6718,8 +7061,8 @@ func GetPathAttribute(data []byte) (PathAttributeInterface, error) {
 		return &PathAttributePmsiTunnel{}, nil
 	case BGP_ATTR_TYPE_AIGP:
 		return &PathAttributeAigp{}, nil
-	case BGP_ATTR_TYPE_OPAQUE_VALUE:
-		return &PathAttributeOpaqueValue{}, nil
+	case BGP_ATTR_TYPE_LARGE_COMMUNITY:
+		return &PathAttributeLargeCommunities{}, nil
 	}
 	return &PathAttributeUnknown{}, nil
 }

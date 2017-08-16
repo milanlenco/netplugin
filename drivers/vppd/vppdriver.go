@@ -18,23 +18,24 @@ package vppd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
-	"os"
+
 	"golang.org/x/net/context"
 
 	"github.com/contiv/netplugin/core"
 	"github.com/contiv/netplugin/drivers"
 	"github.com/contiv/netplugin/netmaster/mastercfg"
 
-	log "github.com/ligato/cn-infra/logging/logrus"
 	"github.com/ligato/cn-infra/logging"
+	log "github.com/ligato/cn-infra/logging/logrus"
 
 	agent_core "github.com/ligato/cn-infra/core"
 	"github.com/ligato/vpp-agent/clientv1/linux/localclient"
 	"github.com/ligato/vpp-agent/flavours/linuxlocal"
-	vpp_l2 "github.com/ligato/vpp-agent/plugins/defaultplugins/l2plugin/model/l2"
 	vpp_if "github.com/ligato/vpp-agent/plugins/defaultplugins/ifplugin/model/interfaces"
+	vpp_l2 "github.com/ligato/vpp-agent/plugins/defaultplugins/l2plugin/model/l2"
 	linux_if "github.com/ligato/vpp-agent/plugins/linuxplugin/model/interfaces"
 
 	// TODO: move all communication with docker to the agent (i.e. create containerId-based namespace)
@@ -45,14 +46,14 @@ import (
 type EndpointConfig struct {
 	vppVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to AFPacket
 	endVeth  *linux_if.LinuxInterfaces_Interface // VETH interface attached to the endpoint
-	afpacket *vpp_if.Interfaces_Interface // AFPacket interface
+	afpacket *vpp_if.Interfaces_Interface        // AFPacket interface
 }
 
 // NetworkConfig stores configuration for a given network.
 type NetworkConfig struct {
-	bd *vpp_l2.BridgeDomains_BridgeDomain // Bridge domain
-	vxlans []*vpp_if.Interfaces_Interface // List of all VXLAN tunnels
-	endpoints map[string]EndpointConfig   // Endpoint ID -> Endpoint Config
+	bd        *vpp_l2.BridgeDomains_BridgeDomain // Bridge domain
+	vxlans    []*vpp_if.Interfaces_Interface     // List of all VXLAN tunnels
+	endpoints map[string]EndpointConfig          // Endpoint ID -> Endpoint Config
 }
 
 // VppDriverOperState carries operational state of the VppDriver.
@@ -60,7 +61,7 @@ type VppDriverOperState struct {
 	core.CommonState
 
 	// Cached currently applied configuration of networks and endpoints.
-	LocalNetConfig map[string]NetworkConfig // Network ID -> Network config
+	LocalNetConfig      map[string]NetworkConfig // Network ID -> Network config
 	localNetConfigMutex sync.Mutex
 }
 
@@ -89,14 +90,14 @@ func (s *VppDriverOperState) Clear() error {
 
 // VppDriver holds the operational state of vpp driver
 type VppDriver struct {
-	lock     sync.Mutex         // lock for modifying shared state
-	oper     VppDriverOperState // Oper state of the driver
+	lock sync.Mutex         // lock for modifying shared state
+	oper VppDriverOperState // Oper state of the driver
 
-	localIP  string             // Local IP address
-	localClusterIp string       // Local cluster IP address
-	clusterIPs []string         // Array of all cluster IPs
+	localIP        string   // Local IP address
+	localClusterIp string   // Local cluster IP address
+	clusterIPs     []string // Array of all cluster IPs
 
-	vppAgent *agent_core.Agent   // VPP agent
+	vppAgent *agent_core.Agent // VPP agent
 
 	// TODO: remove once agent supports containerId-based namespaces
 	dockerClient *dockerclient.Client
@@ -343,15 +344,15 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		// TODO: this should be something like Namespace_CONTAINER_REF_NS
 		Namespace: &linux_if.LinuxInterfaces_Interface_Namespace{
 			Type: linux_if.LinuxInterfaces_Interface_Namespace_PID_REF_NS,
-			Pid: uint32(cinfo.State.Pid),
+			Pid:  uint32(cinfo.State.Pid),
 		},
 	}
 
-	epcfg.afpacket = &vpp_if.Interfaces_Interface {
+	epcfg.afpacket = &vpp_if.Interfaces_Interface{
 		Name:    afPacketName,
 		Type:    vpp_if.InterfaceType_AF_PACKET_INTERFACE,
 		Enabled: true,
-		Afpacket: &vpp_if.Interfaces_Interface_Afpacket {
+		Afpacket: &vpp_if.Interfaces_Interface_Afpacket{
 			HostIfName: vppVethName,
 		},
 	}
@@ -376,19 +377,19 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	}
 
 	netcfg.bd.Interfaces = append(netcfg.bd.Interfaces,
-								&vpp_l2.BridgeDomains_BridgeDomain_Interfaces{
-									Name: afPacketName,
-									BridgedVirtualInterface: false,
-								})
+		&vpp_l2.BridgeDomains_BridgeDomain_Interfaces{
+			Name: afPacketName,
+			BridgedVirtualInterface: false,
+		})
 
 	err = localclient.DataChangeRequest(vppDriverID).
-				Put().
-				BD(netcfg.bd).
-				LinuxInterface(epcfg.vppVeth).
-				LinuxInterface(epcfg.endVeth).
-				VppInterface(epcfg.afpacket).
-				Send().
-				ReceiveReply()
+		Put().
+		BD(netcfg.bd).
+		LinuxInterface(epcfg.vppVeth).
+		LinuxInterface(epcfg.endVeth).
+		VppInterface(epcfg.afpacket).
+		Send().
+		ReceiveReply()
 	if err != nil {
 		d.oper.localNetConfigMutex.Unlock()
 		log.Errorf("Failed to create endpoint id='%s', Err: %v", id, err)
@@ -479,13 +480,13 @@ func (d *VppDriver) DeleteEndpoint(id string) error {
 	netcfg.bd.Interfaces = filteredBdIfs
 
 	err = localclient.DataChangeRequest(vppDriverID).
-				Put().
-				BD(netcfg.bd).
-				Delete().
-				VppInterface(epcfg.afpacket.Name).
-				LinuxInterface(epcfg.vppVeth.Name).
-				LinuxInterface(epcfg.endVeth.Name).
-				Send().ReceiveReply()
+		Put().
+		BD(netcfg.bd).
+		Delete().
+		VppInterface(epcfg.afpacket.Name).
+		LinuxInterface(epcfg.vppVeth.Name).
+		LinuxInterface(epcfg.endVeth.Name).
+		Send().ReceiveReply()
 	if err != nil {
 		netcfg.bd.Interfaces = origBfIfs
 		log.Errorf("Failed to delete endpoint id='%s', Err: %v", id, err)

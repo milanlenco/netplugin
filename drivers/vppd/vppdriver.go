@@ -683,6 +683,7 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 	}
 
 	aclcfg.acl = &vpp_acl.AccessLists_Acl{
+		AclName: "acl-" + id,
 		Rules: []*vpp_acl.AccessLists_Acl_Rule{
 			{
 				RuleName: vppRule.RuleId,

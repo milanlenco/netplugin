@@ -421,17 +421,9 @@ func (d *VppDriver) DeleteEndpoint(id string) error {
 		epOper.Clear()
 	}()
 
-	cfgEp := &mastercfg.CfgEndpointState{}
-	cfgEp.StateDriver = d.oper.StateDriver
-	err = cfgEp.Read(id)
-	if err != nil {
-		log.Errorf("Unable to get EpState for id: %s. Err: %v", id, err)
-		return err
-	}
-
 	d.oper.localNetConfigMutex.Lock()
 	defer d.oper.localNetConfigMutex.Unlock()
-	netcfg, netExists := d.oper.LocalNetConfig[cfgEp.NetID]
+	netcfg, netExists := d.oper.LocalNetConfig[epOper.NetID]
 	if !netExists {
 		err := fmt.Errorf("Network id='%s' is not configured", id)
 		log.Error(err.Error())

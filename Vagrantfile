@@ -399,6 +399,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 v.customize ['modifyvm', :id, '--nicpromisc2', 'allow-all']
                 v.customize ['modifyvm', :id, '--nicpromisc3', 'allow-all']
                 v.customize ['modifyvm', :id, '--nicpromisc4', 'allow-all']
+		v.memory=4096
+		v.cpus=4
             end
 
             # mount the host directories

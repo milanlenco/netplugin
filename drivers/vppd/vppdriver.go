@@ -745,6 +745,7 @@ func genNetworkVNI(netID string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(netID))
 	vni := h.Sum32()
+	vni = vni & ((1 << 24) - 1)
 	if vni == 0 {
 		vni = 1
 	}

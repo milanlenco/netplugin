@@ -237,7 +237,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 			})
 	}
 
-	log.Infof("Network config: %v", netcfg)
+	log.Info("Network config: ", netcfg)
 
 	d.oper.localNetConfigMutex.Lock()
 	defer d.oper.localNetConfigMutex.Unlock()
@@ -340,7 +340,7 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		},
 	}
 
-	log.Infof("Endpoint config: %v", epcfg)
+	log.Info("Endpoint config: ", epcfg)
 
 	d.oper.localNetConfigMutex.Lock()
 	defer d.oper.localNetConfigMutex.Unlock()
@@ -411,6 +411,8 @@ func (d *VppDriver) UpdateEndpointGroup(id string) error {
 
 // DeleteEndpoint deletes endpoint with a given ID.
 func (d *VppDriver) DeleteEndpoint(id string) error {
+	log.Infof("Delete endpoint with id: %s", id)
+
 	epOper := drivers.OperEndpointState{}
 	epOper.StateDriver = d.oper.StateDriver
 	err := epOper.Read(id)
@@ -493,6 +495,8 @@ func (d *VppDriver) DeleteHostAccPort(id string) (err error) {
 
 // AddPeerHost adds VTEPs if necessary
 func (d *VppDriver) AddPeerHost(node core.ServiceInfo) error {
+	log.Infof("Add peer host with addr: %s", node.HostAddr)
+
 	// Nothing to do if this is our own IP
 	if node.HostAddr == d.localIP {
 		return nil
@@ -509,6 +513,8 @@ func (d *VppDriver) AddPeerHost(node core.ServiceInfo) error {
 
 // DeletePeerHost deletes associated VTEP
 func (d *VppDriver) DeletePeerHost(node core.ServiceInfo) error {
+	log.Infof("Delete peer host with addr: %s", node.HostAddr)
+
 	// Nothing to do if this is our own IP
 	if node.HostAddr == d.localIP {
 		return nil
@@ -565,6 +571,7 @@ func (d *VppDriver) DelSvcSpec(svcName string, spec *core.ServiceSpec) error {
 
 // SvcProviderUpdate is not implemented.
 func (d *VppDriver) SvcProviderUpdate(svcName string, providers []string) {
+	log.Infof("Not implemented")
 }
 
 // GetEndpointStats is not implemented
@@ -597,7 +604,7 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 	return []byte{}, nil
 }
 
-// AddPolicyRule is not implemented
+// AddPolicyRule creates a policy rule
 func (d *VppDriver) AddPolicyRule(id string) error {
 	ruleCfg := &mastercfg.CfgPolicyRule{}
 	ruleCfg.StateDriver = d.oper.StateDriver
@@ -617,7 +624,8 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 	}
 
 	vppRule := &ruleCfg.OfnetPolicyRule
-	log.Infof("This is the rule: %+v", vppRule)
+	log.Infof("Add policy rule with id='%s' and config: %+v", id, vppRule)
+
 	aclcfg := ACLConfig{}
 	var action *vpp_acl.AccessLists_Acl_Rule_Actions
 	var matches *vpp_acl.AccessLists_Acl_Rule_Matches
@@ -694,7 +702,7 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 		},
 	}
 
-	log.Infof("ACL config: %v", aclcfg)
+	log.Info("ACL config: ", aclcfg)
 
 	err = localclient.DataChangeRequest(vppDriverID).
 		Put().
@@ -703,7 +711,7 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 		ReceiveReply()
 
 	if err != nil {
-		log.Errorf("Failed to create network id='%s', Err: %v", id, err)
+		log.Errorf("Failed to create policy rule id='%s', Err: %v", id, err)
 		return err
 	}
 
@@ -712,8 +720,20 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 	return nil
 }
 
-// DelPolicyRule is not implemented
+// DelPolicyRule deletes a policy rule
 func (d *VppDriver) DelPolicyRule(id string) error {
-	log.Infof("Not implemented")
+	log.Infof("Delete policy rule with id: %s", id)
+
+	err := localclient.DataChangeRequest(vppDriverID).
+		Delete().
+		ACL("acl-" + id).
+		Send().
+		ReceiveReply()
+
+	if err != nil {
+		log.Errorf("Failed to delete policy rule id='%s', Err: %v", id, err)
+		return err
+	}
+
 	return nil
 }

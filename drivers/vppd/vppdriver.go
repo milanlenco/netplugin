@@ -617,6 +617,7 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 	}
 
 	vppRule := &ruleCfg.OfnetPolicyRule
+	log.Infof("This is the rule: %+v", vppRule)
 	aclcfg := ACLConfig{}
 	var action *vpp_acl.AccessLists_Acl_Rule_Actions
 	var matches *vpp_acl.AccessLists_Acl_Rule_Matches
@@ -628,7 +629,7 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 		}
 	} else if vppRule.Action == "deny" {
 		action = &vpp_acl.AccessLists_Acl_Rule_Actions{
-			AclAction: vpp_acl.AclAction_PERMIT,
+			AclAction: vpp_acl.AclAction_DENY,
 		}
 	}
 

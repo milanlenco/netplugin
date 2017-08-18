@@ -175,7 +175,7 @@ func transformACLIpRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.ACLRule, 
 				aclRule = tcpACL(ipRule.Tcp, aclRule)
 			} else if ipRule.Udp != nil {
 				aclRule = udpACL(ipRule.Udp, aclRule)
-			} else {
+			} else if ipRule.Ip == nil {
 				aclRule = otherACL(ipRule.Other, aclRule)
 			}
 			aclIPRules = append(aclIPRules, *aclRule)

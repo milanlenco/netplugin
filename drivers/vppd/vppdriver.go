@@ -744,5 +744,9 @@ func (d *VppDriver) DelPolicyRule(id string) error {
 func genNetworkVNI(netID string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(netID))
-	return h.Sum32()
+	vni := h.Sum32()
+	if vni == 0 {
+		vni = 1
+	}
+	return vni
 }

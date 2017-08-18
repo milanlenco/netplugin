@@ -18,6 +18,7 @@ package vppd
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"sync"
 	"time"
@@ -217,8 +218,8 @@ func (d *VppDriver) CreateNetwork(id string) error {
 
 	// Create VXLAN tunnels between all the nodes of the cluster
 	netcfg.vxlans = []*vpp_if.Interfaces_Interface{}
-	for i, nodeIP := range d.clusterIPS {
-		vxlanName := fmt.Sprintf("vxlan-%s-%d", id, i)
+	for _, nodeIP := range d.clusterIPS {
+		vxlanName := fmt.Sprintf("vxlan-%s-%s", id, nodeIP)
 		netcfg.vxlans = append(netcfg.vxlans,
 			&vpp_if.Interfaces_Interface{
 				Name:    vxlanName,
@@ -227,6 +228,7 @@ func (d *VppDriver) CreateNetwork(id string) error {
 				Vxlan: &vpp_if.Interfaces_Interface_Vxlan{
 					SrcAddress: d.localIP,
 					DstAddress: nodeIP,
+					Vni:        genNetworkVNI(id),
 				},
 			})
 		netcfg.bd.Interfaces = append(netcfg.bd.Interfaces,
@@ -736,4 +738,11 @@ func (d *VppDriver) DelPolicyRule(id string) error {
 	}
 
 	return nil
+}
+
+// genNetworkVNI generates VNI from network ID.
+func genNetworkVNI(netID string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(netID))
+	return h.Sum32()
 }

@@ -168,7 +168,8 @@ func transformACLIpRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.ACLRule, 
 				if err != nil {
 					return aclIPRules, err
 				}
-			} else if ipRule.Icmp != nil {
+			}
+			if ipRule.Icmp != nil {
 				aclRule = icmpACL(ipRule.Icmp, aclRule)
 			} else if ipRule.Tcp != nil {
 				aclRule = tcpACL(ipRule.Tcp, aclRule)

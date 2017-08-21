@@ -1,0 +1,1000 @@
+  103  sudo vppctl sh int addr
+  104  sudo vppctl ping 192.168.3.11
+  105  sudo vppctl ping 192.168.3.10
+  106  sudo vppctl sh vxlan tunnel
+  107  netctl net delete contiv-net
+  108  sudo vppctl sh int addr
+  109  sudo vppctl 
+  110  sudo vppctl sh int bridge-domain
+  111  sudo vppctl sh bridge-domain
+  112  sudo vppctl sh vxlan tunnel
+  113  netctl net create contiv-net --subnet=10.1.1.0/24 
+  114  sudo vppctl sh vxlan tunnel
+  115  sudo vppctl sh bridge-domain
+  116  sudo vppctl sh bridge-domain 1 detail
+  117  sudo vppctl sh bridge-domain 2 detail
+  118  sudo vppctl sh int
+  119  sudo vppctl sh int addr
+  120  sudo vppctl sh vxlan tunnel
+  121  docker run -itd  --name=web --privileged --net=contiv-net alpine /bin/sh 
+  122  echo $DOCKER_HOST
+  123  netctl net delete contiv-net
+  124  tail -f /tmp/netplugin.log
+  125  sudo vppctl sh int
+  126  sudo vppctl sh bridge-domain
+  127  sudo vppctl sh bridge-domain 2 detail
+  128  sudo vppctl sh int
+  129  sudo vppctl sh vxlan tunnel
+  130  sudo vppctl sh int
+  131  sudo vppctl sh int addr
+  132  sudo vppctl sh bridge-domain
+  133  netctl net create contiv-net --subnet=10.1.1.0/24 
+  134  sudo vppctl sh int addr
+  135  sudo vppctl sh vxlan tunnel
+  136  sudo vppctl sh int
+  137  sudo vppctl sh bridge-domain 1 detail
+  138  sudo vppctl sh int
+  139  sudo vppctl sh int addr
+  140  docker run -itd  --name=web --privileged --net=contiv-net alpine /bin/sh 
+  141  tail -f /tmp/netplugin.log 
+  142  cat /tmp/netplugin.log  | grep vppd
+  143  date
+  144  cat /tmp/netplugin.log  | grep vppd
+  145  docker ps
+  146  docker show
+  147  docker --hel
+  148  docker images
+  149  docker ps
+  150  sudo vppctl sh int
+  151  sudo vppctl sh int addr
+  152  netctl net create contiv-net --subnet=10.1.1.0/24 
+  153  sudo vppctl sh int addr
+  154  sudo vppctl sh int 
+  155  sudo vppctl sh bridge-domain 1 detail
+  156  docker run -itd  --name=web --privileged --net=contiv-net alpine /bin/sh 
+  157  docker ps
+  158  docker exec -it web /bin/bash
+  159  docker exec -it web /bin/sh
+  160  tail -f /tmp/netplugin.log 
+  161  tail -f /tmp/netplugin.log
+  162  vim /tmp/netplugin.log
+  163  ifconfig
+  164  vim /tmp/netplugin.log
+  165  sudo vppctl sh int
+  166  docker run -itd  --name=db --privileged --net=contiv-net alpine /bin/sh 
+  167  ifconfig
+  168  docker ps
+  169  docker exec -it db /bin/sh
+  170  sudo vppctl sh int
+  171  docker exec -it db /bin/sh
+  172  sudo vppctl sh int
+  173  sudo vppctl sh vxlan tunnel
+  174  sudo vppctl sh pci
+  175  sudo vppctl sh int
+  176  cat netplugin/myscripts/vpp.sh 
+  177  vim netplugin/myscripts/vpp.sh 
+  178  sudo kill `pidof vpp`
+  179  cat netplugin/myscripts/vpp.sh 
+  180  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:09.0 }"
+  181  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:09.0 uio-driver virtio-pci }"
+  182  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:09.0 uio-driver igb_uio }"
+  183  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:09.0 uio-driver vfio-pci }"
+  184  modprobe igb_uio
+  185  sudo find -name igb_uio.ko /
+  186  sudo find / -name igb_uio.ko
+  187  sudo find / -name dpdk.py
+  188  lsmod
+  189  sudo find / -name igb_uio.ko
+  190  sudo find / -name dpdk.py
+  191  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:09.0 uio-driver vfio-pci }"
+  192  cat netplugin/myscripts/vpp.sh 
+  193  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:09.0 }"
+  194  sudo ifconfig eth2 up
+  195  sh int
+  196  ifconfig
+  197  ip link list
+  198  netplugin/myscripts/vpp.sh 
+  199  cd /vag
+  200  exit
+  201  cat /tmp/netplugin.log 
+  202  ps -ef | grep etcd
+  203  sudo vppctl sh int addr
+  204  exit
+  205  sudo vppctl sh int
+  206  sudo vppctl sh int addr
+  207  sudo service vpp sto
+  208  sudo vppctl sh int 
+  209  sudo vppctl sh version
+  210  exit
+  211  ls
+  212  ll
+  213  vi m
+  214  sudo vppctl sh int
+  215  exit
+  216  sudo vppctl sh int
+  217  sudo vppctl sh int addr
+  218  exit
+  219  sudo vppctl sh int addr
+  220  sudo service vpp stop
+  221  sudo service vpp start
+  222  sudo vppctl sh int addr
+  223  sudo service vpp status
+  224  cat /etc/vpp/startup.conf
+  225  ls /usr/lib/vpp_plugins
+  226  mv /usr/lib/vpp_plugins/memif_plugin.so ~/
+  227  sudo mv /usr/lib/vpp_plugins/memif_plugin.so ~/
+  228  sudo service stop vpp
+  229  sudo service vpp stop
+  230  sudo service vpp start
+  231  sudo vppctl sh int
+  232  sudo mv ~/memif_plugin.so /usr/lib/vpp_plugins/memif_plugin.so
+  233  cd vpp/
+  234  ll
+  235  exit
+  236  sudo systemctl stop vpp
+  237  sudo systemctl start vpp
+  238  sudo systemctl status vpp
+  239  sudo service vpp status
+  240  sudo vppctl sh version
+  241  touch /dev/shm/vpe-api
+  242  sudo vppctl sh version
+  243  sudo service vpp restart
+  244  rm /dev/shm/vpe-api
+  245  ls /dev/shm/
+  246  sudo service vpp stop
+  247  exit
+  248  sudo vppctl sh int
+  249  exit
+  250  sudo vppctl sh int
+  251  sudo service vpp stop
+  252  sudo service vpp start
+  253  sudo vppctl sh int
+  254  ll
+  255  cd netplugin
+  256  ll
+  257  make host-restart 
+  258  cd /opt/gopath/src/github.com/contiv/netplugin/
+  259  make host-restart 
+  260  exit
+  261  netplugin/myscripts/vpp.sh
+  262  sudo vppctl sh int
+  263  cat netplugin/myscripts/vpp.sh
+  264  nano netplugin/myscripts/vpp.sh
+  265  netplugin/myscripts/vpp.sh
+  266  sudo vppctl sh version
+  267  sudo service vpp status
+  268  sudo service vpp stop
+  269  sudo service vpp start
+  270  cat /etc/vpp/startup.conf
+  271  nano /etc/vpp/startup.conf
+  272  sudo nano /etc/vpp/startup.conf
+  273  sudo service vpp stop
+  274  sudo service vpp start
+  275  sudo vppctl sh int
+  276  netplugin/myscripts/vpp.sh
+  277  sudo service vpp status
+  278  ifconfig
+  279  sudo vppctl sh int
+  280  netplugin/myscripts/vpp.sh
+  281  sudo vppctl sh int
+  282  sudo vppctl sh int addr
+  283  sudo vppctl ping 192.168.3.11
+  284  sudo vppctl sh int addr
+  285  sudo mv /usr/lib/vpp_plugins/memif_plugin.so ~/
+  286  netplugin/myscripts/vpp.sh
+  287  sudo vppctl sh int
+  288  sudo mv ~/memif_plugin.so /usr/lib/vpp_plugins/memif_plugin.so 
+  289  netplugin/myscripts/vpp.sh 
+  290  sudo vppctl sh int
+  291  eit
+  292  exit
+  293  sudo vppctl sh int
+  294  sudo vppctl sh int addr
+  295  sudo vppctl ping 192.168.3.11
+  296  sudo vppctl sh int
+  297  ll
+  298  sudo service vpp stop
+  299  vi dpdk.py
+  300  chmod +x dpdk.py 
+  301  ./dpdk.py -s
+  302  ./dpdk.py -u 0000:00:09.0
+  303  sudo ./dpdk.py -u 0000:00:09.0
+  304  sudo ./dpdk.py -b virtio-pci 0000:00:09.0
+  305  sudo ifconfig eth2 192.168.3.3.10/24 up
+  306  sudo ifconfig eth2 192.168.3.10/24 up
+  307  ifconfig
+  308  ping 192.168.3.11
+  309  exit
+  310  sudo ifconfig eth3 192.168.10.1
+  311  sudo ifconfig eth3 up
+  312  sudo ifconfig eth3 0.0.0.0 down
+  313  ./dpdk.py -s
+  314  ./dpdk.py -u 0000:00:0a.0
+  315  sudo ./dpdk.py -u 0000:00:0a.0
+  316  sudo ./dpdk.py -b uio_pci_generic 0000:00:0a.0
+  317  netplugin/myscripts/vpp.sh
+  318  sudo vppctl sh int
+  319  sudo vppctl set int ip address GigabitEthernet0/a/0 192.168.2.10/24 
+  320  sudo vppctl set interface state GigabitEthernet0/a/0 up
+  321  sudo vppctl sh int
+  322  sudo vppctl sh int addr
+  323  sudo vppctl sh ping 192.168.2.11
+  324  sudo vppctl ping 192.168.2.11
+  325  clear
+  326  etcdctl sh int
+  327  etcdctl ls
+  328  exit
+  329  cd netplugin/myscripts/
+  330  ./build.sh 
+  331  cat /tmp/netplugin.log 
+  332  netctl net create contiv-net --subnet=10.1.1.0/24 
+  333  sudo vppctl sh int
+  334  sudo vppctl sh int br
+  335  sudo vppctl sh br
+  336  sudo vppctl sh br 1 detail
+  337  docker images
+  338  docker run -itd  --name=web --net=contiv alpine /bin/sh 
+  339  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  340  docker run -itd  --name=web1 --net=contiv-net alpine /bin/sh 
+  341  docker ps
+  342  docker attach web1
+  343  docker rm `docker ps --no-trunc -aq`
+  344  clear
+  345  sudo vppctl sh int
+  346  ifconfig
+  347  docker ps
+  348  exit
+  349  netplugin/myscripts/build.sh 
+  350  exit
+  351  netctl net create contiv-net --subnet=10.1.1.0/24
+  352  sudo vppctl sh br
+  353  sudo vppctl sh int
+  354  docker run -itd  --name=web --net=contiv-net ciscolabs/epapp /bin/sh 
+  355  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  356  netctl policy create prodWeb
+  357  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  358  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  359  netctl policy rule-ls prodWeb
+  360  netctl group create -p prodWeb contiv-net web
+  361  docker run -itd  --name=policy --net=web2 alpine /bin/sh 
+  362  docker run -itd  --name=policy --net=web alpine /bin/sh 
+  363  docker run -itd  --name=policy2 --net=web alpine /bin/sh 
+  364  docker ps
+  365  cat /tmp/netplugin.log 
+  366  clear
+  367  cat /tmp/netplugin.log 
+  368  sudo vppctl sh ?
+  369  sudo vppctl show acl-plugin
+  370  sudo vppctl show acl-plugin tables
+  371  exit
+  372  netplugin/myscripts/build.sh 
+  373  exit
+  374  netplugin/myscripts/build.sh
+  375  exit
+  376  netplugin/myscripts/build.sh
+  377  exit
+  378  netplugin/myscripts/build.sh
+  379  exot
+  380  exit
+  381  netplugin/myscripts/build.sh
+  382  exot
+  383  exit
+  384  netplugin/myscripts/build.sh
+  385  exit
+  386  netplugin/myscripts/build.sh
+  387  exit
+  388  netplugin/myscripts/build.sh
+  389  exit
+  390  netplugin/myscripts/build.sh
+  391  exit
+  392  netplugin/myscripts/build.sh
+  393  cat netplugin/vendor/github.com/ligato/vpp-agent/plugins/defaultplugins/aclplugin/model/acl/acl.pb.go 
+  394  netplugin/myscripts/build.sh
+  395  exit 
+  396  netctl net create contiv-net --subnet=10.1.1.0/24 
+  397  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  398  netctl policy create prodWeb
+  399  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  400  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  401  netctl policy rule-ls prodWeb
+  402  netctl group create -p prodWeb contiv-net web
+  403  docker run -itd  --name=policy --net=web alpine 
+  404  netctl policy delete prodWeb
+  405  netctl net rm contiv-net 
+  406  docker ps
+  407  docker kill web 
+  408  netplugin/myscripts/build.sh
+  409  docker kill web 
+  410  netplugin/myscripts/build.sh
+  411  exit
+  412  netplugin/myscripts/build.sh
+  413  exit
+  414  clear
+  415  sudo vppctl sh int
+  416  exit
+  417  sudo service vpp restart
+  418  sudo service vpp stop
+  419  netplugin/myscripts/vpp.sh 
+  420  sudo vppctl sh int
+  421  sudo vppctl ping 192.168.2.11
+  422  clear
+  423  exiit
+  424  exit
+  425  netplugin/myscripts/build.sh
+  426  cat /tmp/netplugin.log 
+  427  ifconfig
+  428  ping 192.168.2.11
+  429  netctl net create contiv-net --subnet=10.1.1.0/24
+  430  sudo vppctl sh br
+  431  sudo vppctl sh br 1 detail
+  432  netplugin/myscripts/vpp.sh 
+  433  netplugin/myscripts/build.sh
+  434  netctl net create contiv-net --subnet=10.1.1.0/24 
+  435  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  436  netctl policy create prodWeb
+  437  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  438  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  439  netctl policy rule-ls prodWeb
+  440  cat /tmp/netplugin.log 
+  441  netctl group create -p prodWeb contiv-net web
+  442  cat /tmp/netplugin.log 
+  443  sudo vppctl sh int
+  444  ./dpdk.py -s
+  445  ./dpdk.py -u 0000:00:08.0
+  446  sudo ./dpdk.py -u 0000:00:08.0
+  447  sudo ./dpdk.py -u 0000:00:0a.0 
+  448  sudo ./dpdk.py -b virtio-pci 0000:00:08.0
+  449  sudo ./dpdk.py -b virtio-pci 0000:00:0a.0
+  450  ifconfig
+  451  sudo ifconfig 
+  452  sudo ifconfig eth2 192.168.2.10 up
+  453  sudo ifconfig eth2 
+  454  ping 192.168.2.11
+  455  sudo ifconfig eth3 0.0.0.0 up 
+  456  ./dpdk.py -s
+  457  cd netplugin
+  458  ll
+  459  myscripts/vpp.sh 
+  460  cd 
+  461  ./dpdk.py -s
+  462  ./dpdk.py -u 0000:00:0a.0
+  463  sudo ./dpdk.py -u 0000:00:0a.0
+  464  sudo ./dpdk.py -b uio_pci_generic 0000:00:0a.0
+  465  ./dpdk.py -s
+  466  ifconfig
+  467  sudo ./dpdk.py -u 0000:00:08.0
+  468  sudo ./dpdk.py -u 0000:00:09.0
+  469  sudo ./dpdk.py -b virtio-pci 0000:00:09.0
+  470  sudo ./dpdk.py -b virtio-pci 0000:00:08.0
+  471  ifconfig
+  472  sudo ifconfig eth1 192.168.2.10 up
+  473  sudo ifconfig eth3 0.0.0.0 up
+  474  sudo ifconfig eth2 0.0.0.0 up
+  475  ifconfig
+  476  sudo ./dpdk.py -s
+  477  netplugin/myscripts/vpp.sh 
+  478  sudo vppctl sh int addr
+  479  ifconfig
+  480  ping 192.168.2.11
+  481  sudo ifconfig eth1 0.0.0.0
+  482  sudo ifconfig eth2 192.168.2.10 up
+  483  ifconfig
+  484  ping 192.168.2.10
+  485  ping 192.168.2.11
+  486  sudo vppctl sh int addr
+  487  sudo vppctl ping 192.168.2.10
+  488  sudo vppctl ping 192.168.2.11
+  489  netctl net create contiv-net --subnet=10.1.1.0/24 
+  490  sudo vppctl sh int br
+  491  sudo vppctl sh br 1 detail
+  492  sudo vppctl sh int
+  493  cat /tmp/netplugin.log 
+  494  netplugin/myscripts/build.sh
+  495  git status
+  496  exit
+  497  netctl net create contiv-net --subnet=10.1.1.0/24 
+  498  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  499  netctl policy create prodWeb
+  500  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  501  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  502  netctl policy rule-ls prodWeb
+  503  netctl group create -p prodWeb contiv-net web
+  504  cat /tmp/netplugin.log 
+  505  netplugin/myscripts/build.sh
+  506  clear
+  507  history
+  508  vi ~/.bash_
+  509  vi ~/.bash_history 
+  510  netctl net create contiv-net --subnet=10.1.1.0/24 
+  511  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  512  netctl policy create prodWeb
+  513  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  514  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  515  netctl policy rule-ls prodWeb
+  516  netctl group create -p prodWeb contiv-net web
+  517  cat /tmp/netplugin.log 
+  518  netplugin/myscripts/build.sh
+  519  netctl net create contiv-net --subnet=10.1.1.0/24 
+  520  netctl policy create prodWeb
+  521  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  522  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  523  netctl policy rule-ls prodWeb
+  524  netctl group create -p prodWeb contiv-net web
+  525  netplugin/myscripts/build.sh
+  526  netctl net create contiv-net --subnet=10.1.1.0/24 
+  527  netctl policy create prodWeb
+  528  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  529  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  530  netctl policy rule-ls prodWeb
+  531  netctl group create -p prodWeb contiv-net web
+  532  netplugin/myscripts/build.sh
+  533  netctl net create contiv-net --subnet=10.1.1.0/24 
+  534  netctl policy create prodWeb
+  535  netctl policy rule-add prodWeb 0 -d in -l tcp -j deny
+  536  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+  537  netctl policy rule-ls prodWeb
+  538  netctl group create -p prodWeb contiv-net web
+  539  netplugin/myscripts/build.sh
+  540  netctl net create contiv-net --subnet=10.1.1.0/24 
+  541  netctl policy create prodWeb
+  542  netctl policy rule-add prodWeb 0 -d in -j deny
+  543  netctl policy rule-ls prodWeb
+  544  netctl group create -p prodWeb contiv-net web
+  545  cat /tmp/netplugin.log 
+  546  netplugin/myscripts/build.sh
+  547  l
+  548  ll
+  549  cd netplugin
+  550  ll
+  551  cd myscripts/
+  552  ll
+  553  cd ../
+  554  history | less
+  555  find / -name dpdk.py
+  556  sudo find / -name dpdk.py
+  557  ls
+  558  pwd
+  559  ls -al
+  560  date
+  561  history
+  562  history | less
+  563  ls
+  564  sudo vppctl sh int
+  565  sudo vppctl sh int addr
+  566  docker ps
+  567  docker ps -a
+  568  sudo vppctl sh int
+  569  sudo vppctl sh int addr
+  570  ps -ef | grep vpp
+  571  ifconifg
+  572  ifconfig
+  573  sudo lshw -class network -businfo
+  574  history | less
+  575  history > netplugin/node1-history
+  576  ifconfig
+  577  sudo vppctl sh int addr
+  578  sudo vppctl sh int 
+  579  sudo vppctl sh int addr
+  580  sudo vppctl sh vxlan tunnel
+  581  sudo vppctl sh pci
+  582  sudo lshw -class network -businfo
+  583  vim /etc/vpp/startup.conf 
+  584  cat  /etc/vpp/startup.conf 
+  585  vim netplugin/myscripts/vpp.sh 
+  586  ifconfig
+  587  sudo lshw -class network -businfo
+  588  vim /etc/vpp/startup.conf 
+  589  sudo vim /etc/vpp/startup.conf 
+  590  ps -ef | grep vpp
+  591  vim /lib/systemd/system/vpp.service 
+  592  sudo service vpp start
+  593  ps -ef | grep vpp
+  594  pidof vpp
+  595  vim /etc/vpp/startup.conf 
+  596  sudo vim /etc/vpp/startup.conf 
+  597  sudo service stop
+  598  sudo service vpp stop
+  599  sudo service vpp start
+  600  pidof vpp
+  601  ps -ef | grep vpp
+  602  pidof vpp
+  603  vpp "api-trace { on } dpdk { dev 0000:00:09.0 }"
+  604  sudo vpp "api-trace { on } dpdk { dev 0000:00:09.0 }"
+  605  pidof vpp
+  606  sudo journalctl -u  vpp
+  607  date
+  608  pidof vpp
+  609  kill 2902
+  610  sudo kill 2902
+  611  pidof vpp
+  612  sudo journalctl -u  vpp
+  613  sudo service vpp start
+  614  sudo journalctl -u  vpp
+  615  sudo ifconfig eth2 down
+  616  sudo service vpp start
+  617  sudo journalctl -u  vpp
+  618  pidof vpp
+  619  sudo vim /etc/systemd/system/vpp.serivce
+  620  find -name vpp.serivce /lib/systemd/
+  621  find /lib/systemd/ -name vpp.serivce
+  622  find /lib/systemd/ -name vpp.service
+  623  sudo vim /lib/systemd/system/vpp.service
+  624  sudo service vpp disable
+  625  sudo service vpp stop
+  626  sudo vim /lib/systemd/system/vpp.service
+  627  systemctl daemon-reload
+  628  sudo systemctl daemon-reload
+  629  sudo service vpp stop
+  630  sudo service vpp disable
+  631  systemctl disable vpp
+  632  sudo systemctl disable vpp
+  633  vim /etc/systemd/system/multi-user.target.wants/vpp.service.
+  634  sudo service vpp start
+  635  ps -ef | grep vpp
+  636  sudo service vpp stop
+  637  ps -ef | grep vpp
+  638  sudo vim  /etc/vpp/startup.conf 
+  639  ifconfig
+  640  ip link list
+  641  sudo lshw -class network -businfo
+  642  vim /etc/vpp/startup.conf 
+  643  sudo vim /etc/vpp/startup.conf 
+  644  vim netplugin/myscripts/vpp
+  645  vim netplugin/myscripts/vpp.sh 
+  646  sudo systemctl enable vpp.service
+  647  sudo journalctl -u  vpp
+  648  ifconfig
+  649  sudo vppctl sh int
+  650  sudo cat /lib/systemd/system/vpp.service 
+  651  sudo systemctl disable vpp.service
+  652  sudo vppctl sh int
+  653  sudo vppctl sh pci
+  654  ifconfig
+  655  sudo lshw -class network -businfo
+  656  sudo vpp "api-trace { on } dpdk { dev 0000:00:09.0 }"
+  657  sudo vppctl sh pci
+  658  sudo vppctl sh int
+  659  sudo systemctl enable vpp.service
+  660  sudo vppctl sh int
+  661  ifconfig
+  662  chmod u+x netplugin/myscripts/vpp.sh
+  663  netplugin/myscripts/vpp.sh
+  664  ps -ef | grep vpp
+  665  vim netplugin/myscripts/vpp.sh
+  666  ./netplugin/myscripts/vpp.sh
+  667  sh int
+  668  sudo vppctl sh int
+  669  ps -ef | grep vpp
+  670  sudo systemctl disable vpp.service
+  671  cat /opt/gopath/src/github.com/contiv/netplugin/myscripts/vpp.sh 
+  672  ps -ef | grep vpp
+  673  sudo vppctl sh int
+  674  netplugin/myscripts/vpp.sh 
+  675  cat netplugin/myscripts/vpp.sh 
+  676  sudo vppctl set int ip address GigabitEthernet0/9/0 192.168.3.10/24
+  677  vim netplugin/myscripts/vpp.sh 
+  678  netplugin/myscripts/vpp.sh 
+  679  sudo vppctl set int ip address GigabitEthernet0/9/0 192.168.3.10/24
+  680  netplugin/myscripts/vpp.sh 
+  681  sudo vppctl sh in
+  682  sudo vppctl sh int
+  683  sudo vppctl sh int addr
+  684  sudo vppctl sh pci
+  685  ./dpdk.py -u 0000:00:09.0
+  686  sudo ./dpdk.py -u 0000:00:09.0
+  687  sudo ./dpdk.py -b virtio-pci 0000:00:09.0
+  688  sudo ./dpdk.py -b virtio-pci 0000:00:08.0
+  689  sudo ./dpdk.py -u 0000:00:08.0
+  690  vim dpdk.py 
+  691  ls /proc/modules 
+  692  sudo ls /proc/modules/
+  693  ls /proc/modules 
+  694  sudo cat /proc/modules 
+  695  ifconfig
+  696  sudo vim /etc/vpp/startup.conf 
+  697  sudo systemctl enable vpp.service
+  698  vim netplugin/myscripts/vpp
+  699  vim netplugin/myscripts/vpp.sh 
+  700  netplugin/myscripts/vpp.sh 
+  701  vim netplugin/myscripts/vpp.sh 
+  702  netplugin/myscripts/vpp.sh 
+  703  ifconfig
+  704  ps -ef | grep vpp
+  705  sudo vppctl sh int
+  706  vim netplugin/myscripts/vpp.sh 
+  707  ps -ef | grep vpp
+  708  ifconfig
+  709  sudo vppctl sh int
+  710  sudo vppctl sh int addr
+  711  sudo vppctl sh pci
+  712  sudo vppctl ping 192.168.3.11
+  713  sudo vppctl sh pci
+  714  sudo vppctl sh int
+  715  ps -ef | grep vpp
+  716  sudo vppctl sh int
+  717  netctl net create contiv-net --subnet=10.1.1.0/24 
+  718  sudo vppctl sh bridge-domain
+  719  sudo vppctl sh bridge-domain 1 detail
+  720  docker run -itd  --name=web --privileged --net=contiv-net alpine /bin/sh 
+  721  docker exec -it web /bin/sh
+  722  sudo vppctl sh int
+  723  netplugin/myscripts/vpp.sh 
+  724  ps -ef | grep vpp
+  725  history | grep disable
+  726  sudo systemctl disable vpp.service
+  727  ps -ef | grep vpp
+  728  netplugin/myscripts/vpp.sh 
+  729  sudo vppctl sh int
+  730  sudo vppctl sh int  addr
+  731  sudo vppctl sh pci
+  732  sudo vppctl sh version
+  733  sudo systemctl enable vpp.service
+  734  sudo vppctl sh int
+  735  sudo vppctl sh int addr
+  736  ps -ef | grep netplugin
+  737  ps -ef | grep netd
+  738  ps -ef | grep netplugin
+  739  ps -ef | grep vtep
+  740  ps -ef | grep ip
+  741  echo $VTEP_IP
+  742  ps -ef | grep netplugin
+  743  env
+  744  sudo vppctl sh int addr
+  745  netctl net create contiv-net --subnet=10.1.1.0/24 
+  746  docker run -itd  --name=web --privileged --net=contiv-net alpine /bin/sh
+  747  docker exec -it web /bin/sh
+  748  docker ps
+  749  tail -f /tmp/netplugin.log 
+  750  vim /tmp/netplugin.log 
+  751  netctl net delete contiv-net 
+  752  vim /tmp/netplugin.log 
+  753  ps -ef | grep vpp
+  754  sudo vppctl sh int
+  755  ifconfig
+  756  netplugin/myscripts/vpp.sh 
+  757  kill 1750
+  758  sudo kill 1750
+  759  netplugin/myscripts/vpp.sh 
+  760  ps -ef | grep vpp
+  761  sudo vppctl sh int
+  762  ls /dev/shm/vpe-api 
+  763  sudo rm /dev/shm/vpe-api
+  764  sudo vppctl sh int
+  765  netplugin/myscripts/vpp.sh 
+  766  sudo vppctl sh int
+  767  cat netplugin/myscripts/vpp.sh 
+  768  sudo kill `pidof vpp`
+  769  sudo vpp "unix { interactive } api-trace { on } dpdk { dev 0000:00:0a.0 }"
+  770  sudo lshw -class network -businfo
+  771  ./dpdk.py -u 0000:00:0a.0
+  772  ./dpdk.py -b uio_pci_generic 0000:00:0a.0
+  773  sudo ./dpdk.py -b uio_pci_generic 0000:00:0a.0
+  774  modprobe uio_pci_generic
+  775  sudo modprobe uio_pci_generic
+  776  sudo ./dpdk.py -b uio_pci_generic 0000:00:0a.0
+  777  sudo lshw -class network -businfo
+  778  sudo ./dpdk.py -b uio_pci_generic 0000:00:0a.0
+  779  sudo vppctl sh int
+  780  sudo vppctl sh int addr
+  781  sudo vppctl sh pci
+  782  netctl net create contiv-net --subnet=10.1.1.0/24
+  783  sudo vppctl sh int
+  784  sudo vppctl sh bridge-domain
+  785  docker run -itd  --name=web --privileged --net=contiv-net alpine /bin/sh 
+  786  docker exec -it web /bin/sh
+  787  netctl policy create prodWeb
+  788  netctl policy rule-add prodWeb 0 -d in -j deny
+  789  netctl policy rule-ls prodWeb
+  790  docker ps
+  791  group create -p prodWeb contiv-net web
+  792  netctl group create -p prodWeb contiv-net web
+  793  vim /tmp/netplugin.log 
+  794  sudo vpp_api_test 
+  795  vim /tmp/netplugin.log 
+  796  sudo vppctl sh int
+  797  net create contiv-net --subnet=10.1.1.0/24
+  798  netctl net create contiv-net --subnet=10.1.1.0/24
+  799  netctl policy create prodWeb
+  800  netctl policy rule-add prodWeb 0 -d in -j deny
+  801  netctl policy rule-ls prodWeb
+  802  netctl group create -p prodWeb contiv-net web
+  803  vim /tmp/netplugin.log 
+  804  netctl net create contiv-net --subnet=10.1.1.0/24
+  805  netctl policy create prodWeb
+  806  netctl policy rule-add prodWeb 0 -d in -j deny
+  807  netctl group create -p prodWeb contiv-net web
+  808  vim /tmp/netplugin.log 
+  809  sudo vppctl sh int
+  810  vim netplugin/myscripts/policy.sh
+  811  chmod u+x netplugin/myscripts/policy.sh
+  812  netplugin/myscripts/policy.sh
+  813  vim /tmp/netplugin.log 
+  814  sudo vpp_api_test 
+  815  cat netplugin/myscripts/policy.sh
+  816  at netplugin/myscripts/build
+  817  ll netplugin/myscripts/
+  818  clear
+  819  netplugin/myscripts/build.sh 
+  820  netctl net create contiv-net --subnet=10.1.1.0/24 
+  821  sudo vppctl sh br
+  822  sudo vppctl sh br 1 detail
+  823  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  824  docker ps
+  825  docker attach 5b
+  826  sudo vppctl sh int 
+  827  ifconfig
+  828  sudo vppctl sh int addr
+  829  docker run -it --name=web3 --net=contiv-net  alpine /bin/sh
+  830  sudo vppctl sh int addr
+  831  sudo vppctl sh br 1 detail
+  832  sudo vppctl sh br 
+  833  sudo vppctl sh br 2 detail
+  834  netctl policy create prodWeb
+  835  netctl policy rule-add prodWeb 0 -d in -j deny
+  836  netctl policy rule-ls prodWeb
+  837  netctl group create -p prodWeb contiv-net web
+  838  cat /tmp/netplugin.log 
+  839  sudo vppctl sh ?
+  840  sudo vppctl show acl-plugin
+  841  sudo vppctl show acl-plugin ?
+  842  sudo vppctl show acl-plugin acl
+  843  netplugin/myscripts/build.sh 
+  844  netctl net create contiv-net --subnet=10.1.1.0/24 
+  845  sudo vppctl sh br 2 detail
+  846  sudo vppctl sh int
+  847  netplugin/myscripts/vpp
+  848  netplugin/myscripts/vpp.sh 
+  849  cat netplugin/myscripts/vpp.sh 
+  850  netplugin/myscripts/vpp.sh 
+  851  sudo service vpp restart
+  852  netplugin/myscripts/vpp.sh 
+  853  sudo vppctl sh int
+  854  netplugin/myscripts/vpp.sh 
+  855  sudo service vpp status
+  856  sudo service vpp stop
+  857  ps -ef | grep vpp
+  858  sudo service vpp stop
+  859  netplugin/myscripts/vpp.sh 
+  860  sudo vppctl sh int
+  861  netctl net create contiv-net --subnet=10.1.1.0/24 
+  862  sudo vppctl sh int
+  863  sudo service vpp stop
+  864  netplugin/myscripts/vpp.sh 
+  865  sudo service vpp stop
+  866  netplugin/myscripts/vpp.sh 
+  867  sudo service vpp start
+  868  netplugin/myscripts/vpp.sh 
+  869  cat /tmp/netplugin.log 
+  870  sudo vppctl sh int
+  871  ifconfig
+  872  netctl net create contiv-net --subnet=10.1.1.0/24 
+  873  sudo vppctl sh int
+  874  sudo vppctl sh vxlan
+  875  sudo vppctl sh int vxlan
+  876  sudo vppctl sh ?
+  877  sudo vppctl sh vxlan tunnel
+  878  sudo vppctl sh br 1 detail
+  879  docker run -itd  --name=web --net=contiv-net alpine /bin/sh 
+  880  sudo vppctl sh br 1 detail
+  881  netctl policy rule-add -h
+  882  netctl net create contiv-net2 --subnet=10.1.1.0/24 
+  883  netctl net create contiv-net2 --subnet=10.1.2.0/24 
+  884  docker run -itd  --name=web3 --net=contiv-net2 alpine /bin/sh 
+  885  sudo vppctl sh int
+  886  sudo vppctl sh br
+  887  sudo vppctl sh br 2 detail
+  888  sudo vppctl sh vxlan tunnel
+  889  sudo vppctl sh br 1 detail
+  890  cat /tmp/netplugin.log 
+  891  sudo vppctl sh int
+  892  docker ps
+  893  docker attach web
+  894  sudo vppctl sh int
+  895  docker kill web web3
+  896  sudo vppctl sh int
+  897  sudo service vpp stop
+  898  sudo service vpp start
+  899  netplugin/myscripts/build.sh 
+  900  netplugin/myscripts/vpp.sh 
+  901  sudo vppctl sh int
+  902  netctl net create contiv-net --subnet=10.1.1.0/24 
+  903  netctl net create contiv-net2 --subnet=10.1.2.0/24 
+  904  sudo vppct sh int
+  905  sudo vppctl sh int
+  906  netplugin/myscripts/vpp.sh 
+  907  sudo vppctl sh int
+  908  netplugin/myscripts/vpp.sh 
+  909  sudo service vpp stop
+  910  sudo service vpp start
+  911  netplugin/myscripts/vpp.sh 
+  912  sudo service vpp restart
+  913  netplugin/myscripts/vpp.sh 
+  914  clear
+  915  sudo vppctl sh br
+  916  sudo service vp stop
+  917  sudo service vpp stop
+  918  sudo service vpp start
+  919  sudo service vpp status
+  920  netplugin/myscripts/vpp.sh 
+  921  sudo vppctl sh br
+  922  netplugin/myscripts/vpp.sh 
+  923  sudo vppctl sh br
+  924  sudo vppctl sh int
+  925  netplugin/myscripts/build.sh 
+  926  netctl net create contiv-net --subnet=10.1.1.0/24 
+  927  netctl net create contiv-net2 --subnet=10.1.2.0/24 
+  928  sudo vppctl sh br
+  929  sudo vppctl sh int
+  930  sudo vppctl sh br 1 detail
+  931  sudo vppctl sh br 2 detail
+  932  netplugin/myscripts/vpp.sh 
+  933  sudo service vpprestart
+  934  sudo service vpp restart
+  935  netplugin/myscripts/vpp.sh 
+  936  netplugin/myscripts/build.sh 
+  937  netplugin/myscripts/vpp.sh 
+  938  cat netplugin/myscripts/vpp.sh 
+  939  pidof vpp
+  940  cd /dev/shm/
+  941  ll
+  942  rm vpe-api 
+  943  cd
+  944  ./dpdk.py -s
+  945  ifconfig
+  946  sudo systemctl stop vpp
+  947  cat netplugin/myscripts/vpp.sh 
+  948  netplugin/myscripts/vpp.sh 
+  949  sudo systemctl stop vpp
+  950  sudo vppctl sh int
+  951  sudo service vpp start
+  952  sudo vppctl sh int
+  953  netplugin/myscripts/vpp.sh 
+  954  netctl net create contiv-net --subnet=10.1.1.0/24 
+  955  sudo vppctl sh int
+  956  netctl net create contiv-net2 --subnet=10.1.2.0/24 
+  957  sudo vppctl sh int
+  958  cat /tmp/netplugin.log 
+  959  clear
+  960  netplugin/myscripts/build.sh 
+  961  netplugin/myscripts/vpp.sh 
+  962  sudo service vpp stop
+  963  netplugin/myscripts/vpp.sh 
+  964  sudo service vpp restart
+  965  netplugin/myscripts/vpp.sh 
+  966  cat /tmp/netplugin.log 
+  967  netplugin/myscripts/vpp.sh 
+  968  sudo service vpp restart
+  969  netplugin/myscripts/vpp.sh 
+  970  sudo service vpp restart
+  971  netplugin/myscripts/vpp.sh 
+  972  sudo vppctl sh int
+  973  sudo vppctl sh version
+  974  sudo service vpp restart
+  975  netplugin/myscripts/vpp.sh 
+  976  cat /tmp/netplugin.log 
+  977  netctl net create contiv-net --subnet=10.1.1.0/24 
+  978  sudo vppctl sh br
+  979  sudo vppctl sh int
+  980  cat /tmp/netplugin.log 
+  981  netctl net create contiv-net --subnet=10.1.1.0/24 
+  982  sudo vppctl sh br
+  983  sudo vppctl sh br 1 det
+  984  netctl net create contiv-net2 --subnet=10.2.1.0/24 
+  985  sudo vppctl sh br 1 det
+  986  sudo vppctl sh br 2 det
+  987  sudo vppctl sh int
+  988  netplugin/myscripts/vpp.sh 
+  989  ps -ef | grep vpp
+  990  sudo kill -9 1825 
+  991  ps -ef | grep vpp
+  992  netplugin/myscripts/vpp.sh 
+  993  vi netplugin/myscripts/vpp.sh 
+  994  sudo vpp "api-trace { on } dpdk { dev 0000:00:0a.0 }"
+  995  sudo vppctl sh int
+  996  vi netplugin/myscripts/vpp.sh 
+  997  netplugin/myscripts/vpp.sh 
+  998  sudo vppctl sh int
+  999  cat /usr/share/vpp/api/acl.api.json 
+ 1000  sudo vppctl sh int
+ 1001  netctl net create contiv-net --subnet=10.1.1.0/24 
+ 1002  netplugin/myscripts/build.sh 
+ 1003  sudo vppctl sh int
+ 1004  netplugin/myscripts/build.sh 
+ 1005  netctl net create contiv-net --subnet=10.1.1.0/24 
+ 1006  netctl policy create prodWeb
+ 1007  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80-88 -action=deny -priority=10
+ 1008  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -port=88 -action=deny -priority=10
+ 1009  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp  -action=allow -priority=20
+ 1010  netctl policy rule-add prodWeb 2 -direction=in -protocol=tcp  -action=allow -priority=20
+ 1011  netctl policy rule-ls prodWeb
+ 1012  cat /tmp/netplugin.log 
+ 1013  netctl group create -p prodWeb contiv-net web
+ 1014  cat /tmp/netplugin.log 
+ 1015  netctl policy rule-ls prodWeb
+ 1016  netctl policy ruke-add 
+ 1017  netctl policy rue-add 
+ 1018  netctl policy rule-add 
+ 1019  netctl policy rule-add -n 10.1.1.0/24 -o 10.1.2.0/24 -j deny -l tcp -p 88
+ 1020  netctl policy rule-add prodWeb2 1 -n 10.1.1.0/24 -o 10.1.2.0/24 -j deny -l tcp -p 
+ 1021  netctl policy create prodWeb
+ 1022  netctl policy create prodWeb2
+ 1023  netctl policy rule-add prodWeb2 1 -n 10.1.1.0/24 -o 10.1.2.0/24 -j deny -l tcp -p 
+ 1024  netctl policy rule-add prodWeb2 1 -n 10.1.1.0/24 -o 10.1.2.0/24 -j deny -l tcp -p 88 
+ 1025  netctl policy rule-add prodWeb2 1 -n 10.1.1.0/24 -o 10.2.2.0/24 -j deny -l tcp -p 88 
+ 1026  netctl policy rule-add prodWeb2 1 -n 10.1.1.0/24 -j deny -l tcp -p 88 
+ 1027  netctl policy rule-add prodWeb2 1 -i 192.168.10.0/24 -j deny -l tcp -p 88 
+ 1028  netctl group create -p prodWeb2 contiv-net web2
+ 1029  cat /tmp/netplugin.log 
+ 1030  netctl policy create prodWeb3
+ 1031  cat /tmp/netplugin.log 
+ 1032  netctl policy rule-add prodWeb3 0 -direction=out -protocol=tcp -port=8888 -action=deny -priority=10
+ 1033  netctl policy rule-ls prodWeb
+ 1034  netctl policy rule-ls prodWeb3
+ 1035  netctl group create -p prodWeb3 contiv-net web3
+ 1036  pidof vpp
+ 1037  sudo kill -9 2352
+ 1038  netplugin/myscripts/build.sh 
+ 1039  netplugin/myscripts/vpp.sh 
+ 1040  sudo service vpp start
+ 1041  netplugin/myscripts/vpp.sh 
+ 1042  sudo vppctl sh int
+ 1043  sudo docker ps
+ 1044  netctl policy create prodWeb
+ 1045  netctl policy rule-add prodWeb 0 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+ 1046  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=deny -priority=1
+ 1047  netctl policy rule-ls prodWeb
+ 1048  netctl group create -p prodWeb contiv-net web
+ 1049  netctl net create contiv-net --subnet=10.1.1.0/24 
+ 1050  netctl group create -p prodWeb contiv-net web
+ 1051  netctl policy rule-add prodWeb 1 -direction=in -protocol=tcp -port=80 -action=deny -priority=1
+ 1052  netctl policy rule-add prodWeb 2 -direction=in -protocol=tcp -port=88 -action=deny -priority=1
+ 1053  netctl policy rule-add prodWeb 3 -direction=out -protocol=udp -action=deny 
+ 1054  cat /tmp/netplugin.log 
+ 1055  netctl policy rule-add -h
+ 1056  netplugin/myscripts/vpp.sh 
+ 1057  sudo service vpp restart
+ 1058  netplugin/myscripts/vpp.sh 
+ 1059  docker network ls
+ 1060  docker network rm web 
+ 1061  docker network rm contiv-net
+ 1062  docker network ls
+ 1063  sudo vppctl sh int
+ 1064  netplugin/myscripts/vpp.sh 
+ 1065  sudo service vpp restart
+ 1066  netplugin/myscripts/vpp.sh 
+ 1067  sudo vppctl sh int
+ 1068  pidof vpp
+ 1069  sudo kill -9 5072 4590 
+ 1070  pidof vpp
+ 1071  sudo kill -9 5072 4590 
+ 1072  pidof vpp
+ 1073  netplugin/myscripts/vpp.sh 
+ 1074  sudo vppctl sh int
+ 1075  netctl net create contiv-net --subnet=10.1.1.0/24
+ 1076  netctl policy create prodWeb
+ 1077  netctl policy rule-add prodWeb 0 -direction=in -protocol=tcp -port=80 -action=allow -priority=10
+ 1078  netctl policy rule-ls prodWeb
+ 1079  netctl group create -p prodWeb contiv-net web
+ 1080  sudo vppctl sh int
+ 1081  sudo docker ps
+ 1082  docker network ls
+ 1083  sudo vppctl sh int
+ 1084  netctl net create contiv-net --subnet=10.1.1.0/24
+ 1085  sudo vppctl sh br
+ 1086  netctl policy rule-add prodWeb 0 -direction=in -protocol=udp -port=80 -action=deny
+ 1087  netctl policy create prodWeb
+ 1088  netctl policy rule-add prodWeb 0 -direction=in -protocol=udp -port=80 -action=deny
+ 1089  netctl group create -p prodWeb contiv-net web
+ 1090  cat /tmp/netplugin.log 
+ 1091  sudo vppctl sh acl-plugin acl
+ 1092  netctl policy rule-add -h
+ 1093  cat /tmp/netplugin.log 
+ 1094  ll
+ 1095  ll /tmp/netplugin.log 
+ 1096  cp /tmp/netplugin.log netplugin
+ 1097  netctl policy rule-add -h
+ 1098  sudo vppctl show acl-plugin acl
+ 1099  cp /tmp/netplugin.log netplugin
+ 1100  history | les
+ 1101  history | less
+ 1102  history > netplugin/node1logs/history.log

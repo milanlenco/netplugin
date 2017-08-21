@@ -286,7 +286,7 @@ func (gp *EpgPolicy) createOfnetRule(rule *contivModel.Rule, dir string) (*ofnet
 		log.Fatalf("Unknown rule direction %s", dir)
 	}
 
-	// Add the Rule to policyDB
+	// // Add the Rule to policyDB
 	// err = ofnetMaster.AddRule(ofnetRule)
 	// if err != nil {
 	// 	log.Errorf("Error creating rule {%+v}. Err: %v", ofnetRule, err)
@@ -294,7 +294,7 @@ func (gp *EpgPolicy) createOfnetRule(rule *contivModel.Rule, dir string) (*ofnet
 	// }
 
 	// Send AddRule to netplugin agents
-	err = addPolicyRuleState(ofnetRule)
+	err = addPolicyRuleState(ofnetRule, gp.EndpointGroupID)
 	if err != nil {
 		log.Errorf("Error creating rule {%+v}. Err: %v", ofnetRule, err)
 		return nil, err
@@ -373,7 +373,7 @@ func (gp *EpgPolicy) DelRule(rule *contivModel.Rule) error {
 	for _, ofnetRule := range ruleMap.OfnetRules {
 		log.Infof("Deleting rule {%+v} from policyDB", ofnetRule)
 
-		// Delete the rule from policyDB
+		// // Delete the rule from policyDB
 		// err := ofnetMaster.DelRule(ofnetRule)
 		// if err != nil {
 		// 	log.Errorf("Error deleting the ofnet rule {%+v}. Err: %v", ofnetRule, err)
@@ -425,3 +425,4 @@ func (gp *EpgPolicy) Clear() error {
 func NotifyEpgChanged(epgID int) {
 	ofnetMaster.InjectGARPs(epgID)
 }
+

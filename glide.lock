@@ -1,5 +1,5 @@
-hash: 63841ab68ae56923729d7e076ff5d6ed9340bf8a6242f8972a1d7ca3a4f74b7e
-updated: 2017-08-13T23:19:52.678387875+02:00
+hash: 9ed7dfafadc4871f7d701180ff67bb29c44ead4bc5c2e48909e1696c8619aa5e
+updated: 2017-08-22T14:35:37.214705092+02:00
 imports:
 - name: cloud.google.com/go
   version: 30702f1fe4fb6561c6cae311b78d34c1df252c9b
@@ -381,7 +381,7 @@ imports:
   - utils/addrs
   - utils/safeclose
 - name: github.com/ligato/vpp-agent
-  version: 67238082850e084ac52b4a3ef1ae1847eadbdc44
+  version: c936a628aea13ddc69db609007d6bb06db1000b9
   subpackages:
   - clientv1/defaultplugins
   - clientv1/defaultplugins/dbadapter

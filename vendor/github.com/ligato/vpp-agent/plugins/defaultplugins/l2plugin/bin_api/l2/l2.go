@@ -43,6 +43,7 @@ func (*MacEntry) GetCrcString() string {
 //        ]
 //
 type BridgeDomainSwIf struct {
+	Context   uint32 // TODO temporary fix, need to modify the generator
 	SwIfIndex uint32
 	Shg       uint8
 }

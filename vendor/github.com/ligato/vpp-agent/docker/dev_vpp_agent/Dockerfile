@@ -3,8 +3,6 @@ FROM ubuntu:16.04
 ARG VPP_URL="xxx"
 ARG AGENT_COMMIT="xxx"
 ARG VPP_COMMIT="xxx"
-ENV http_proxy http://proxy-wsa.esl.cisco.com:80
-ENV https_proxy http://proxy-wsa.esl.cisco.com:80
 
 RUN apt-get update && apt-get install -y \
     sudo wget git build-essential gdb vim nano python \

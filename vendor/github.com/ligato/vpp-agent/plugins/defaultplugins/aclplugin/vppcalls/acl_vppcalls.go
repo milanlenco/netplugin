@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"net"
 
+	"strings"
+
 	"git.fd.io/govpp.git/api"
 	log "github.com/ligato/cn-infra/logging/logrus"
 	acl_api "github.com/ligato/vpp-agent/plugins/defaultplugins/aclplugin/bin_api/acl"
@@ -57,7 +59,6 @@ func AddIPAcl(rules []*acl.AccessLists_Acl_Rule, aclName string, vppChannel *api
 func AddMacIPAcl(rules []*acl.AccessLists_Acl_Rule, aclName string, vppChannel *api.Channel) (uint32, error) {
 	// Prepare MAc Ip rules
 	aclMacIPRules, err := transformACLMacIPRules(rules)
-	log.Info("aclMacIPRules: ", aclMacIPRules)
 	if err != nil {
 		return 0, err
 	}
@@ -67,8 +68,6 @@ func AddMacIPAcl(rules []*acl.AccessLists_Acl_Rule, aclName string, vppChannel *
 		msg.Count = uint32(len(aclMacIPRules))
 		msg.Tag = []byte(aclName)
 		msg.R = aclMacIPRules
-
-		log.Info("MacipACLAdd msg: ", *msg)
 
 		reply := &acl_api.MacipACLAddReply{}
 		err = vppChannel.SendRequest(msg).ReceiveReply(reply)
@@ -154,7 +153,6 @@ func DeleteMacIPAcl(aclIndex uint32, vppChannel *api.Channel) error {
 // todo auxiliary methods can be moved to some util.go
 
 func transformACLIpRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.ACLRule, error) {
-	log.Info("transformACLIpRules: ", rules)
 	var aclIPRules []acl_api.ACLRule
 	for _, rule := range rules {
 		aclRule := new(acl_api.ACLRule)
@@ -168,22 +166,23 @@ func transformACLIpRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.ACLRule, 
 		if rule.Matches != nil && rule.Matches.IpRule != nil {
 			// Concerned to ip rules only
 			ipRule := rule.Matches.IpRule
+			// L3
 			if ipRule.Ip != nil {
 				aclRule, err = ipACL(ipRule.Ip, aclRule)
 				if err != nil {
 					return aclIPRules, err
 				}
 			}
+			// ICMP/L4
 			if ipRule.Icmp != nil {
 				aclRule = icmpACL(ipRule.Icmp, aclRule)
 			} else if ipRule.Tcp != nil {
 				aclRule = tcpACL(ipRule.Tcp, aclRule)
 			} else if ipRule.Udp != nil {
 				aclRule = udpACL(ipRule.Udp, aclRule)
-			} else if ipRule.Ip == nil {
+			} else if ipRule.Other != nil {
 				aclRule = otherACL(ipRule.Other, aclRule)
 			}
-			log.Info("Appending aclRule: ", *aclRule)
 			aclIPRules = append(aclIPRules, *aclRule)
 		}
 	}
@@ -191,7 +190,6 @@ func transformACLIpRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.ACLRule, 
 }
 
 func transformACLMacIPRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.MacipACLRule, error) {
-	log.Info("transformACLMacIPRules: ", rules)
 	var aclMacIPRules []acl_api.MacipACLRule
 	for _, rule := range rules {
 		aclMacIPRule := new(acl_api.MacipACLRule)
@@ -238,46 +236,40 @@ func transformACLMacIPRules(rules []*acl.AccessLists_Acl_Rule) ([]acl_api.MacipA
 }
 
 func ipACL(ipRule *acl.AccessLists_Acl_Rule_Matches_IpRule_Ip, aclRule *acl_api.ACLRule) (*acl_api.ACLRule, error) {
-	log.Info("ipACL: ", ipRule, aclRule)
-	aclRule.Proto = 0 // Ignore L4
 	sourceNetwork := net.ParseIP(ipRule.SourceNetwork)
 	destinationNetwork := net.ParseIP(ipRule.DestinationNetwork)
-	if sourceNetwork.To4() != nil && destinationNetwork.To4() != nil {
+	if len(strings.TrimSpace(ipRule.SourceNetwork)) != 0 &&
+		(sourceNetwork.To4() == nil && sourceNetwork.To16() == nil) {
+		return aclRule, fmt.Errorf("Source address %v is invalid", ipRule.SourceNetwork)
+	}
+	if len(strings.TrimSpace(ipRule.DestinationNetwork)) != 0 &&
+		(destinationNetwork.To4() == nil && destinationNetwork.To16() == nil) {
+		return aclRule, fmt.Errorf("Destination address %v is invalid", ipRule.DestinationNetwork)
+	}
+
+	// beware: IPv4 address can be converted to IPv6
+	if (sourceNetwork.To4() != nil && destinationNetwork.To4() == nil && destinationNetwork.To16() != nil) ||
+		(sourceNetwork.To4() == nil && sourceNetwork.To16() != nil && destinationNetwork.To4() != nil) {
+		return aclRule, fmt.Errorf("Source address %v and destionation address %v have different IP versions",
+			ipRule.SourceNetwork, ipRule.DestinationNetwork)
+	}
+	if sourceNetwork.To4() != nil || destinationNetwork.To4() != nil {
 		aclRule.IsIpv6 = 0
 		aclRule.SrcIPAddr = sourceNetwork.To4()
 		aclRule.DstIPAddr = destinationNetwork.To4()
-	} else if sourceNetwork.To16() != nil && destinationNetwork.To16() != nil {
+	} else if sourceNetwork.To16() != nil || destinationNetwork.To16() != nil {
 		aclRule.IsIpv6 = 1
 		aclRule.SrcIPAddr = sourceNetwork.To16()
 		aclRule.DstIPAddr = destinationNetwork.To16()
 	} else {
-		if ipRule.SourceNetwork == "" || ipRule.DestinationNetwork == "" {
-			if sourceNetwork.To4() != nil {
-				aclRule.IsIpv6 = 0
-				aclRule.SrcIPAddr = sourceNetwork.To4()
-			} else if sourceNetwork.To16() != nil {
-				aclRule.IsIpv6 = 1
-				aclRule.SrcIPAddr = sourceNetwork.To16()
-			} else if destinationNetwork.To4() != nil {
-				aclRule.IsIpv6 = 0
-				aclRule.DstIPAddr = destinationNetwork.To4()
-			} else if destinationNetwork.To16() != nil {
-				aclRule.IsIpv6 = 1
-				aclRule.DstIPAddr = destinationNetwork.To16()
-			} else {
-				aclRule.IsIpv6 = 0
-			}
-		} else {
-			return aclRule, fmt.Errorf("Source address %v and destionation address %v have different IP version or missing",
-				ipRule.SourceNetwork, ipRule.DestinationNetwork)
-		}
+		// both empty
+		aclRule.IsIpv6 = 0
 	}
 	return aclRule, nil
 }
 
 // Ranges are exclusive, use first = 0 and last = 255/65535 (icmpv4/icmpv6) to match "any"
 func icmpACL(icmpRule *acl.AccessLists_Acl_Rule_Matches_IpRule_Icmp, aclRule *acl_api.ACLRule) *acl_api.ACLRule {
-	log.Info("icmpACL: ", icmpRule, aclRule)
 	if icmpRule == nil {
 		return aclRule
 	}
@@ -304,7 +296,6 @@ func icmpACL(icmpRule *acl.AccessLists_Acl_Rule_Matches_IpRule_Icmp, aclRule *ac
 }
 
 func tcpACL(tcpRule *acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp, aclRule *acl_api.ACLRule) *acl_api.ACLRule {
-	log.Info("tcpACL: ", tcpRule, aclRule)
 	aclRule.Proto = 6 // IANA TCP
 	aclRule.SrcportOrIcmptypeFirst = uint16(tcpRule.SourcePortRange.LowerPort)
 	aclRule.SrcportOrIcmptypeLast = uint16(tcpRule.SourcePortRange.UpperPort)
@@ -316,7 +307,6 @@ func tcpACL(tcpRule *acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp, aclRule *acl_a
 }
 
 func udpACL(udpRule *acl.AccessLists_Acl_Rule_Matches_IpRule_Udp, aclRule *acl_api.ACLRule) *acl_api.ACLRule {
-	log.Info("udpACL: ", udpRule, aclRule)
 	aclRule.Proto = 17 // IANA UDP
 	aclRule.SrcportOrIcmptypeFirst = uint16(udpRule.SourcePortRange.LowerPort)
 	aclRule.SrcportOrIcmptypeLast = uint16(udpRule.SourcePortRange.UpperPort)

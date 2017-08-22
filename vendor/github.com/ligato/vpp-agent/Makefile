@@ -10,11 +10,11 @@ COVER_DIR=/tmp/
 define generate_sources
 	$(call install_generators)
 	@echo "# installing generic"
-	@cd /opt/gopath/src/github.com/taylorchu/generic/cmd/generic/ && go install -v
-	@cd /opt/gopath/src/github.com/ungerik/pkgreflect/ && go install -v
+	@cd vendor/github.com/taylorchu/generic/cmd/generic/ && go install -v
+	@cd vendor/github.com/ungerik/pkgreflect/ && go install -v
 	@echo "# installing gomock"
-	@cd /opt/gopath/src/github.com/golang/mock/gomock && go install -v
-	@cd /opt/gopath/src/github.com/golang/mock/mockgen && go install -v
+	@cd vendor/github.com/golang/mock/gomock && go install -v
+	@cd vendor/github.com/golang/mock/mockgen && go install -v
 	@echo "# generating sources"
 	@cd plugins/linuxplugin && go generate
 	@cd plugins/defaultplugins/ifplugin && go generate

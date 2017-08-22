@@ -435,7 +435,7 @@ import:
   version: 14b3d72120e8d10ea6e6b7f87f7175734b1faab8
 - package: gopkg.in/yaml.v2
   version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
-- package: github.com/ligato/cn-infra
 - package: github.com/ligato/vpp-agent
+  version: c936a628aea13ddc69db609007d6bb06db1000b9
 - package: github.com/Azure/go-ansiterm
   version: 388960b655244e76e24c75f48631564eaefade62

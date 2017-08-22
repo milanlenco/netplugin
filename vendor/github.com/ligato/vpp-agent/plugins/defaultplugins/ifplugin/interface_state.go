@@ -252,8 +252,7 @@ func (plugin *InterfaceStateUpdater) processIfStateNotification(notif *interface
 		return
 	}
 
-	log.WithFields(log.Fields{"ifName": ifState.Name, "swIfIndex": notif.SwIfIndex, "AdminUpDown": notif.AdminUpDown,
-		"LinkUpDown": notif.LinkUpDown, "Deleted": notif.Deleted}).Debug("Interface state change notification.")
+	log.WithFields(log.Fields{"ifName": ifState.Name, "swIfIndex": notif.SwIfIndex, "AdminUpDown": notif.AdminUpDown}).Debug("Interface state change notification.")
 
 	// store data in ETCD
 	plugin.publishIfState(&intf.InterfaceStateNotification{
@@ -297,21 +296,12 @@ func (plugin *InterfaceStateUpdater) updateIfStateFlags(vppMsg *interfaces.SwInt
 	}
 	ifState.LastChange = time.Now().Unix()
 
-	if vppMsg.Deleted == 1 {
-		ifState.AdminStatus = intf.InterfacesState_Interface_DELETED
-		ifState.OperStatus = intf.InterfacesState_Interface_DELETED
+	if vppMsg.AdminUpDown == 1 {
+		ifState.AdminStatus = intf.InterfacesState_Interface_UP
 	} else {
-		if vppMsg.AdminUpDown == 1 {
-			ifState.AdminStatus = intf.InterfacesState_Interface_UP
-		} else {
-			ifState.AdminStatus = intf.InterfacesState_Interface_DOWN
-		}
-		if vppMsg.LinkUpDown == 1 {
-			ifState.OperStatus = intf.InterfacesState_Interface_UP
-		} else {
-			ifState.OperStatus = intf.InterfacesState_Interface_DOWN
-		}
+		ifState.AdminStatus = intf.InterfacesState_Interface_DOWN
 	}
+
 	return ifState, true, nil
 }
 

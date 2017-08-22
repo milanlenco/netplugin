@@ -64,12 +64,14 @@ type VppDriverOperState struct {
 
 	// Cached currently applied configuration of networks and endpoints.
 	// Acquire locks in the order as they are listed here to prevent from a potential deadlock!
-	LocalNetConfig      map[string]NetworkConfig // Network ID -> Network config
-	localNetConfigMutex sync.Mutex
-	LocalEpConfig       map[string]EndpointConfig // Endpoint ID -> Endpoint config
-	localEpConfigMutex  sync.Mutex
-	LocalACLConfig      map[int][]*ofnet.OfnetPolicyRule // ACL ID -> ACL config
-	localACLConfigMutex sync.Mutex
+	LocalNetConfig        map[string]NetworkConfig // Network ID -> Network config
+	localNetConfigMutex   sync.Mutex
+	LocalEpConfig         map[string]EndpointConfig // Endpoint ID -> Endpoint config
+	localEpConfigMutex    sync.Mutex
+	LocalACLConfig        map[int][]*ofnet.OfnetPolicyRule // ACL ID -> ACL config
+	localACLConfigMutex   sync.Mutex
+	LocalEpEpgConfig      map[int][]string // EPGID -> Ep interface
+	localEpEpgConfigMutex sync.Mutex
 }
 
 // Write the state
@@ -131,6 +133,7 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 		d.oper.LocalNetConfig = make(map[string]NetworkConfig)
 		d.oper.LocalEpConfig = make(map[string]EndpointConfig)
 		d.oper.LocalACLConfig = make(map[int][]*ofnet.OfnetPolicyRule)
+		d.oper.LocalEpEpgConfig = make(map[int][]string)
 
 		// write the oper
 		err = d.oper.Write()
@@ -156,6 +159,12 @@ func (d *VppDriver) Init(info *core.InstanceInfo) error {
 	// make sure LocalACLConfig exist
 	if d.oper.LocalACLConfig == nil {
 		d.oper.LocalACLConfig = make(map[int][]*ofnet.OfnetPolicyRule)
+		rewriteOper = true
+	}
+
+	// make sure LocalEpEpgConfig exist
+	if d.oper.LocalEpEpgConfig == nil {
+		d.oper.LocalEpEpgConfig = make(map[int][]string)
 		rewriteOper = true
 	}
 
@@ -396,6 +405,11 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 	defer d.oper.localEpConfigMutex.Unlock()
 	d.oper.LocalEpConfig[id] = epcfg
 
+	d.oper.localEpEpgConfigMutex.Lock()
+	defer d.oper.localEpEpgConfigMutex.Unlock()
+	localEpEpgCfg := d.oper.LocalEpEpgConfig[cfgEp.EndpointGroupID]
+	localEpEpgCfg = append(localEpEpgCfg, afPacketName)
+
 	// Save the oper state
 	operEp := &drivers.OperEndpointState{
 		NetID:       cfgEp.NetID,
@@ -421,12 +435,6 @@ func (d *VppDriver) CreateEndpoint(id string) error {
 		}
 	}()
 
-	return nil
-}
-
-//UpdateEndpointGroup is not implemented.
-func (d *VppDriver) UpdateEndpointGroup(id string) error {
-	log.Infof("Not implemented")
 	return nil
 }
 
@@ -625,6 +633,11 @@ func (d *VppDriver) InspectNameserver() ([]byte, error) {
 	return []byte{}, nil
 }
 
+//UpdateEndpointGroup is not implemented.
+func (d *VppDriver) UpdateEndpointGroup(id string) error {
+	return nil
+}
+
 // AddPolicyRule creates a policy rule
 func (d *VppDriver) AddPolicyRule(id string) error {
 	ruleCfg := &mastercfg.CfgPolicyRule{}
@@ -635,38 +648,83 @@ func (d *VppDriver) AddPolicyRule(id string) error {
 		return err
 	}
 
-	log.Infof("EPGID = %d", ruleCfg.EndpointGroupID)
 	epgID := ruleCfg.EndpointGroupID
 	vppRule := &ruleCfg.OfnetPolicyRule
 	log.Infof("Add policy rule with id='%s' and config: %+v", id, vppRule)
 
-	// save local endpoint info
 	d.oper.localACLConfigMutex.Lock()
 	d.oper.LocalACLConfig[epgID] = append(d.oper.LocalACLConfig[epgID], vppRule)
 	d.oper.localACLConfigMutex.Unlock()
+
+	rule := d.oper.LocalACLConfig[epgID]
+	d.oper.localEpEpgConfigMutex.Lock()
+	epEpgCfg, epExists := d.oper.LocalEpEpgConfig[epgID]
+	if !epExists {
+		err := fmt.Errorf("There are no endpoints attached to epgID= '%d'", epgID)
+		log.Error(err.Error())
+	} else {
+		for _, afPacketIntfc := range epEpgCfg {
+			err := addEndpointACL(rule, epgID, afPacketIntfc)
+			if err != nil {
+				log.Errorf("Failed to add rule to endpoint: %s", err.Error())
+				return err
+			}
+		}
+	}
+	d.oper.localEpEpgConfigMutex.Unlock()
+	// save local ACL Config info
 	err = d.oper.Write()
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
 // DelPolicyRule deletes a policy rule
 func (d *VppDriver) DelPolicyRule(id string) error {
-	log.Infof("Delete policy rule with id: %s", id)
-
-	err := localclient.DataChangeRequest(vppDriverID).
-		Delete().
-		ACL("acl-" + id).
-		Send().
-		ReceiveReply()
-
+	ruleCfg := &mastercfg.CfgPolicyRule{}
+	ruleCfg.StateDriver = d.oper.StateDriver
+	err := ruleCfg.Read(id)
 	if err != nil {
-		log.Errorf("Failed to delete policy rule id='%s', Err: %v", id, err)
+		log.Errorf("Failed to read ruleCfg \n")
 		return err
 	}
 
+	epgID := ruleCfg.EndpointGroupID
+	vppRule := &ruleCfg.OfnetPolicyRule
+	log.Infof("Delete policy rule with id='%s' and config: %+v", id, vppRule)
+
+	// Get local ACL Config info
+	d.oper.localACLConfigMutex.Lock()
+	rule := d.oper.LocalACLConfig[epgID]
+	d.oper.localACLConfigMutex.Unlock()
+
+	d.oper.localEpEpgConfigMutex.Lock()
+	epEpgCfg, epExists := d.oper.LocalEpEpgConfig[epgID]
+	if !epExists {
+		err := fmt.Errorf("There are no endpoints attached to epgID= '%d'", epgID)
+		log.Error(err.Error())
+	} else {
+		for _, afPacketIntfc := range epEpgCfg {
+			for i, delRule := range rule {
+				if delRule == vppRule {
+					err := delEndpointACL(vppRule, i, afPacketIntfc)
+					if err != nil {
+						log.Errorf("Failed to delete rule from endpoint: %s", err.Error())
+						return err
+					}
+					rule = append(rule[:i], rule[i+1:]...)
+				}
+			}
+
+		}
+	}
+	d.oper.localEpEpgConfigMutex.Unlock()
+
+	err = d.oper.Write()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -683,88 +741,18 @@ func genNetworkVNI(netID string) uint32 {
 }
 
 func addEndpointACL(rule []*ofnet.OfnetPolicyRule, epGroupID int, afPacketName string) error {
+	// Add Rule to the endpoint in VPP
 	aclcfg := ACLConfig{}
-	var action *vpp_acl.AccessLists_Acl_Rule_Actions
-	var matches *vpp_acl.AccessLists_Acl_Rule_Matches
-	var interfaces *vpp_acl.AccessLists_Acl_Interfaces
-
 	for id, vppRule := range rule {
 		ruleID := vppRule.RuleId
 		epPolicyIf := []string{afPacketName}
 
-		if ruleID[len(ruleID)-2:] == "Rx" {
-			interfaces = &vpp_acl.AccessLists_Acl_Interfaces{
-				Egress: epPolicyIf,
-			}
-		} else {
-			interfaces = &vpp_acl.AccessLists_Acl_Interfaces{
-				Ingress: epPolicyIf,
-			}
-		}
-
-		// Action rule to be VPP specific
-		if vppRule.Action == "allow" {
-			action = &vpp_acl.AccessLists_Acl_Rule_Actions{
-				AclAction: vpp_acl.AclAction_PERMIT,
-			}
-		} else if vppRule.Action == "deny" {
-			action = &vpp_acl.AccessLists_Acl_Rule_Actions{
-				AclAction: vpp_acl.AclAction_DENY,
-			}
-		}
-
-		// Src/DstNetwork choice based on protocol
-		if vppRule.IpProtocol == 6 {
-			matches = &vpp_acl.AccessLists_Acl_Rule_Matches{
-				IpRule: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule{
-					Ip: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Ip{
-						DestinationNetwork: vppRule.DstIpAddr,
-						SourceNetwork:      vppRule.SrcIpAddr,
-					},
-					Tcp: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp{
-						DestinationPortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp_DestinationPortRange{
-							LowerPort: uint32(vppRule.DstPort),
-							UpperPort: uint32(vppRule.DstPort),
-						},
-						SourcePortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp_SourcePortRange{
-							LowerPort: uint32(vppRule.SrcPort),
-							UpperPort: uint32(vppRule.SrcPort),
-						},
-					},
-				},
-			}
-		} else if vppRule.IpProtocol == 17 {
-			matches = &vpp_acl.AccessLists_Acl_Rule_Matches{
-				IpRule: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule{
-					Ip: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Ip{
-						DestinationNetwork: vppRule.DstIpAddr,
-						SourceNetwork:      vppRule.SrcIpAddr,
-					},
-					Udp: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Udp{
-						DestinationPortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Udp_DestinationPortRange{
-							LowerPort: uint32(vppRule.DstPort),
-							UpperPort: uint32(vppRule.DstPort),
-						},
-						SourcePortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Udp_SourcePortRange{
-							LowerPort: uint32(vppRule.SrcPort),
-							UpperPort: uint32(vppRule.SrcPort),
-						},
-					},
-				},
-			}
-		} else {
-			matches = &vpp_acl.AccessLists_Acl_Rule_Matches{
-				IpRule: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule{
-					Ip: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Ip{
-						DestinationNetwork: vppRule.DstIpAddr,
-						SourceNetwork:      vppRule.SrcIpAddr,
-					},
-				},
-			}
-		}
+		action := getACLAction(vppRule.Action)
+		matches := getACLMatches(vppRule)
+		interfaces := getACLInterfaces(ruleID, epPolicyIf)
 
 		aclcfg.acl = &vpp_acl.AccessLists_Acl{
-			AclName: "acl-" + vppRule.RuleId[0:7] + "-id-" + strconv.Itoa(id) + afPacketName + "-" + ruleID[len(ruleID)-2:],
+			AclName: "acl-" + vppRule.RuleId[0:7] + "-id-" + strconv.Itoa(id) + "-" + afPacketName + "-" + ruleID[len(ruleID)-2:],
 			Rules: []*vpp_acl.AccessLists_Acl_Rule{
 				{
 					RuleName: vppRule.RuleId + strconv.Itoa(id),
@@ -774,7 +762,6 @@ func addEndpointACL(rule []*ofnet.OfnetPolicyRule, epGroupID int, afPacketName s
 			},
 			Interfaces: interfaces,
 		}
-
 		err := localclient.DataChangeRequest(vppDriverID).
 			Put().
 			ACL(aclcfg.acl).
@@ -787,5 +774,120 @@ func addEndpointACL(rule []*ofnet.OfnetPolicyRule, epGroupID int, afPacketName s
 		}
 	}
 	return nil
+}
+
+func delEndpointACL(rule *ofnet.OfnetPolicyRule, id int, afPacketName string) error {
+	// Delete ACL rule
+	ruleID := rule.RuleId
+	aclName := "acl-" + rule.RuleId[0:7] + "-id-" + strconv.Itoa(id) + "-" + afPacketName + "-" + ruleID[len(ruleID)-2:]
+	err := localclient.DataChangeRequest(vppDriverID).
+		Delete().
+		ACL(aclName).
+		Send().
+		ReceiveReply()
+
+	if err != nil {
+		log.Errorf("Failed to create policy rule id='%s', Err: %v", rule.RuleId, err)
+		return err
+	}
+	return nil
+}
+
+func getACLAction(ruleAction string) (action *vpp_acl.AccessLists_Acl_Rule_Actions) {
+	// Rule Action allow/deny mapping for vpp
+	if ruleAction == "allow" || ruleAction == "ALLOW" {
+		action = &vpp_acl.AccessLists_Acl_Rule_Actions{
+			AclAction: vpp_acl.AclAction_PERMIT,
+		}
+	} else if ruleAction == "deny" || ruleAction == "DENY" {
+		action = &vpp_acl.AccessLists_Acl_Rule_Actions{
+			AclAction: vpp_acl.AclAction_DENY,
+		}
+	}
+	return action
+}
+
+func getACLMatches(vppRule *ofnet.OfnetPolicyRule) (matches *vpp_acl.AccessLists_Acl_Rule_Matches) {
+	var lowerDstPort, upperDstPort, lowerSrcPort, upperSrcPort uint32
+	// Check if Port Range is zero
+	if vppRule.DstPort == 0 {
+		lowerDstPort = uint32(0)
+		upperDstPort = uint32(65535)
+	} else {
+		lowerDstPort = uint32(vppRule.DstPort)
+		upperDstPort = uint32(vppRule.DstPort)
+	}
+	if vppRule.SrcPort == 0 {
+		lowerSrcPort = uint32(0)
+		upperSrcPort = uint32(65535)
+	} else {
+		lowerSrcPort = uint32(vppRule.SrcPort)
+		upperSrcPort = uint32(vppRule.SrcPort)
+	}
+	// Set Src/DstNetwork and Ports based on protocol
+	if vppRule.IpProtocol == 6 {
+		matches = &vpp_acl.AccessLists_Acl_Rule_Matches{
+			IpRule: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule{
+				Ip: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Ip{
+					DestinationNetwork: vppRule.DstIpAddr,
+					SourceNetwork:      vppRule.SrcIpAddr,
+				},
+				Tcp: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp{
+					DestinationPortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp_DestinationPortRange{
+						LowerPort: lowerDstPort,
+						UpperPort: upperDstPort,
+					},
+					SourcePortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Tcp_SourcePortRange{
+						LowerPort: lowerSrcPort,
+						UpperPort: upperSrcPort,
+					},
+				},
+			},
+		}
+	} else if vppRule.IpProtocol == 17 {
+		matches = &vpp_acl.AccessLists_Acl_Rule_Matches{
+			IpRule: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule{
+				Ip: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Ip{
+					DestinationNetwork: vppRule.DstIpAddr,
+					SourceNetwork:      vppRule.SrcIpAddr,
+				},
+				Udp: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Udp{
+					DestinationPortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Udp_DestinationPortRange{
+						LowerPort: lowerDstPort,
+						UpperPort: upperDstPort,
+					},
+					SourcePortRange: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Udp_SourcePortRange{
+						LowerPort: lowerSrcPort,
+						UpperPort: upperSrcPort,
+					},
+				},
+			},
+		}
+	} else {
+		matches = &vpp_acl.AccessLists_Acl_Rule_Matches{
+			IpRule: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule{
+				Ip: &vpp_acl.AccessLists_Acl_Rule_Matches_IpRule_Ip{
+					DestinationNetwork: vppRule.DstIpAddr,
+					SourceNetwork:      vppRule.SrcIpAddr,
+				},
+			},
+		}
+	}
+	return matches
+}
+
+func getACLInterfaces(ruleID string, epPolicyIf []string) (interfaces *vpp_acl.AccessLists_Acl_Interfaces) {
+	// Interface egress or ingress
+	if ruleID[len(ruleID)-2:] == "Rx" {
+		interfaces = &vpp_acl.AccessLists_Acl_Interfaces{
+			Egress: epPolicyIf,
+		}
+	}
+	if ruleID[len(ruleID)-2:] == "Tx" {
+		interfaces = &vpp_acl.AccessLists_Acl_Interfaces{
+			Ingress: epPolicyIf,
+		}
+	}
+	return interfaces
 }
 
